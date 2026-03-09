@@ -25,12 +25,12 @@ from transformer  import MiniGPT, Adam, softmax
 
 PLIK_DANYCH   = "dane.json"
 PLIK_CACHE    = "model_cache.pkl"  # tu zapisujemy wytrenowany model
-WYMIAR        = 128      # większy wymiar = więcej pojemności
+WYMIAR        = 256     # większy wymiar = więcej pojemności
 N_WARSTW      = 4        # więcej warstw = głębszy model
 N_GLOWIC      = 4        # głowice Multi-Head Attention
 DROPOUT       = 0.1      # 10% dropout przeciw przeuczeniu
-EPOKI         = 3000     # więcej epok = lepsze zapamiętanie
-LR            = 0.003    # learning rate
+EPOKI         = 2000     # więcej epok = lepsze zapamiętanie
+LR            = 0.001    # learning rate
 MAKS_DLUGOSC  = 64       # dłuższy kontekst
 BATCH_SIZE    = 32       # ← NOWE
 
