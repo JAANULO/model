@@ -71,7 +71,9 @@ class MiniGPT(nn.Module):
         else:
             ids = ids.to(URZADZENIE)
 
-        T   = ids.shape[0]
+        T = ids.shape[0]
+        T = min(T, self.maks_dlugosc)
+        ids = ids[:T]
         poz = torch.arange(T, device=URZADZENIE)
 
         x = self.embedding(ids) + self.pos_embedding(poz)

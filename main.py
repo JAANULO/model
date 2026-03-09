@@ -25,14 +25,19 @@ from transformer  import MiniGPT, Adam, softmax
 
 PLIK_DANYCH   = "dane.json"
 PLIK_CACHE    = "model_cache.pkl"  # tu zapisujemy wytrenowany model
-WYMIAR        = 256     # większy wymiar = więcej pojemności
+WYMIAR        = 128     # większy wymiar = więcej pojemności
 N_WARSTW      = 4        # więcej warstw = głębszy model
 N_GLOWIC      = 4        # głowice Multi-Head Attention
-DROPOUT       = 0.1      # 10% dropout przeciw przeuczeniu
-EPOKI         = 2000     # więcej epok = lepsze zapamiętanie
-LR            = 0.001    # learning rate
+DROPOUT       = 0.05      # mniej dropout = lepsze zapamiętanie
+EPOKI         = 3000     # więcej epok = lepsze zapamiętanie
+LR            = 0.003    # wyższy LR = szybsza nauka)
 MAKS_DLUGOSC  = 64       # dłuższy kontekst
 BATCH_SIZE    = 32       # ← NOWE
+
+# Przyspieszenie GPU – cuDNN automatycznie dobiera najszybszy algorytm
+import torch
+torch.backends.cudnn.benchmark = True
+torch.backends.cudnn.enabled   = True
 
 # ============================================================
 # CACHE – zapis i wczytywanie modelu
@@ -172,19 +177,15 @@ def trenuj(model, optymalizator, zdania_ids):
 
         optymalizator.zeruj_gradienty()
 
-        # Forward pass dla całego batcha naraz
-        # Przetwarzamy każde zdanie w batchu przez model
-        logits_batch = []
-        for j in range(W.shape[0]):
-            logits = model.forward(W[j])        # (T, V)
-            logits_batch.append(logits)
+        # Przetwarzaj cały batch naraz przez model
+        B, T = W.shape
+        W_flat = W.reshape(B * T)
+        logits = model.forward(W_flat)
 
-        # Złącz wyniki: (BATCH_SIZE * T, V)
-        logits_all = torch.cat(logits_batch, dim=0)
-        cele_all   = C.reshape(-1)               # (BATCH_SIZE * T,)
-
-        # Strata – PAD tokeny są automatycznie ignorowane
-        strata = kryterium(logits_all, cele_all)
+        # logits może mieć inną długość niż B*T (przez maks_dlugosc)
+        # dlatego dopasowujemy cel do rzeczywistej długości logits
+        L = logits.shape[0]
+        strata = kryterium(logits, C.reshape(B * T)[:L])
         calkowita_strata += strata.item()
         n_batchy += 1
 
