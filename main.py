@@ -65,6 +65,7 @@ def zapisz_cache(model, tokenizer, hash_pliku):
         }
     }
     torch.save(dane, PLIK_CACHE)
+    eksportuj_model(model, tokenizer, hash_pliku)
 
 def wczytaj_cache(model, hash_pliku):
     """
@@ -90,6 +91,48 @@ def wczytaj_cache(model, hash_pliku):
     # Wczytaj wagi do modelu
     model.load_state_dict(dane["state_dict"])
 
+    return dane["tokenizer"], True
+def eksportuj_model(model, tokenizer, hash_pliku, sciezka="model_export.pt"):
+    """
+    Zapisuje skompresowany model do wysyłania na GitHuba.
+    Rozmiar: ~5-20MB zamiast ~150MB
+    """
+    import torch
+    dane = {
+        "hash":       hash_pliku,
+        "tokenizer":  tokenizer,
+        "state_dict": {k: v.half()
+                       for k, v in model.state_dict().items()},
+        "config": {
+            "rozmiar_slownika": tokenizer.rozmiar,
+            "wymiar":           model.wymiar,
+            "maks_dlugosc":     model.maks_dlugosc,
+            "n_warstw":         N_WARSTW,
+            "n_glowic":         N_GLOWIC,
+            "dropout":          DROPOUT,
+        }
+    }
+    torch.save(dane, sciezka, _use_new_zipfile_serialization=True)
+    rozmiar = os.path.getsize(sciezka) / 1024 / 1024
+    print(f"  📦 Eksport do '{sciezka}': {rozmiar:.1f} MB (gotowy na GitHub)")
+
+def wczytaj_eksport(model, sciezka="model_export.pt"):
+    """
+    Wczytuje skompresowany model na słabszym sprzęcie.
+    """
+    import torch
+    from transformer import URZADZENIE
+
+    if not os.path.exists(sciezka):
+        print(f"  ❌ Nie znaleziono '{sciezka}'")
+        return None, False
+
+    dane = torch.load(sciezka, map_location=URZADZENIE, weights_only=False)
+    state = {k: v.float() for k, v in dane["state_dict"].items()}
+    model.load_state_dict(state)
+
+    rozmiar = os.path.getsize(sciezka) / 1024 / 1024
+    print(f"  ✅ Wczytano eksport '{sciezka}' ({rozmiar:.1f} MB)")
     return dane["tokenizer"], True
 
 # ============================================================
