@@ -1,6 +1,13 @@
+# Duży cache - tylko lokalnie
 model_cache.pkl
 *.pkl
+
+# Eksport modelu - wysyłamy na GitHub (ten plik NIE jest ignorowany)
+
+# Python cache
 __pycache__/
 *.pyc
+
+# Środowisko wirtualne
 venv/
 .env
