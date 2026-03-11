@@ -272,54 +272,57 @@ if __name__ == "__main__":
     tokenizer_z_cache, cache_ok = wczytaj_cache(model, aktualny_hash)
 
     if cache_ok:
-        # ── Cache aktualny – pomijamy trening ──────────────────
         tokenizer = tokenizer_z_cache
-        model.ustaw_trening(False)  # wyłącz Dropout
+        model.ustaw_trening(False)
         print("✅ Wczytano wytrenowany model z cache!")
         print("   (dane.json nie zmieniło się – trening pominięty)\n")
 
     else:
-        # ── Brak cache lub dane zmienione – trenujemy ──────────
-        tokenizer  = tokenizer_temp
-        zdania_ids = [tokenizer.koduj(z) for z in zdania]
-        optymalizator = Adam(lr=LR, parametry=model.parameters())
-
-        try:
-            from tqdm import tqdm
-            ma_tqdm = True
-        except ImportError:
-            ma_tqdm = False
-            print("  💡 Wskazówka: zainstaluj tqdm dla ładniejszego paska:")
-            print("     pip install tqdm\n")
-
-        print(f"⚙️  Trenuję przez {EPOKI} epok...\n")
-
-        model.ustaw_trening(True)   # włącz Dropout podczas treningu
-        if ma_tqdm:
-            pasek = tqdm(
-                range(1, EPOKI + 1),
-                desc="  Trening",
-                unit="epoka",
-                bar_format="  {l_bar}{bar:40}{r_bar}",
-                dynamic_ncols=True,
-            )
-            for epoka in pasek:
-                strata = trenuj(model, optymalizator, zdania_ids)
-                pasek.set_postfix(strata=f"{strata:.4f}")
+        # spróbuj wczytać eksport z GitHuba
+        tokenizer_export, eksport_ok = wczytaj_eksport(model)
+        if eksport_ok:
+            tokenizer = tokenizer_export
+            model.ustaw_trening(False)
+            print("✅ Wczytano model_export.pt – pomijam trening\n")
         else:
-            # Fallback – wypisuje co 100 epok bez animacji
-            for epoka in range(1, EPOKI + 1):
-                strata = trenuj(model, optymalizator, zdania_ids)
-                if epoka % 100 == 0 or epoka == EPOKI:
-                    proc = epoka / EPOKI * 100
-                    print(f"  Epoka {epoka}/{EPOKI} ({proc:.0f}%)  strata: {strata:.4f}")
+            # ── Brak cache i eksportu – trenujemy ──────────
+            tokenizer  = tokenizer_temp
+            zdania_ids = [tokenizer.koduj(z) for z in zdania]
+            optymalizator = Adam(lr=LR, parametry=model.parameters())
 
-        print(f"\n  ✅ Trening zakończony!")
-        model.ustaw_trening(False)  # wyłącz Dropout przy generowaniu
+            try:
+                from tqdm import tqdm
+                ma_tqdm = True
+            except ImportError:
+                ma_tqdm = False
+                print("  💡 Wskazówka: zainstaluj tqdm dla ładniejszego paska:")
+                print("     pip install tqdm\n")
 
-        # Zapisz model do cache
-        zapisz_cache(model, tokenizer, aktualny_hash)
-        print(f"  💾 Model zapisany do '{PLIK_CACHE}'\n")
+            print(f"⚙️  Trenuję przez {EPOKI} epok...\n")
+
+            model.ustaw_trening(True)
+            if ma_tqdm:
+                pasek = tqdm(
+                    range(1, EPOKI + 1),
+                    desc="  Trening",
+                    unit="epoka",
+                    bar_format="  {l_bar}{bar:40}{r_bar}",
+                    dynamic_ncols=True,
+                )
+                for epoka in pasek:
+                    strata = trenuj(model, optymalizator, zdania_ids)
+                    pasek.set_postfix(strata=f"{strata:.4f}")
+            else:
+                for epoka in range(1, EPOKI + 1):
+                    strata = trenuj(model, optymalizator, zdania_ids)
+                    if epoka % 100 == 0 or epoka == EPOKI:
+                        proc = epoka / EPOKI * 100
+                        print(f"  Epoka {epoka}/{EPOKI} ({proc:.0f}%)  strata: {strata:.4f}")
+
+            print(f"\n  ✅ Trening zakończony!")
+            model.ustaw_trening(False)
+            zapisz_cache(model, tokenizer, aktualny_hash)
+            print(f"  💾 Model zapisany do '{PLIK_CACHE}'\n")
 
     # 4. Test
     print("🧪 Test generowania:")
