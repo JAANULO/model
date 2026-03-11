@@ -32,7 +32,8 @@ class Tokenizer:
         Każde nowe słowo dostaje unikalny numer (ID).
         """
         for zdanie in zdania:
-            for slowo in zdanie.lower().split():
+            for slowo in zdanie.lower():
+
                 if slowo not in self.slowo_na_id:
                     self.slowo_na_id[slowo] = self.rozmiar
                     self.id_na_slowo[self.rozmiar] = slowo
@@ -41,16 +42,8 @@ class Tokenizer:
         print(f"  📖 Słownik: {self.rozmiar} unikalnych tokenów")
 
     def koduj(self, tekst):
-        """
-        Zamienia tekst na listę numerów (ID).
-        Nieznane słowa → ID 1 (UNK)
-        """
-        tokeny = tekst.lower().split()
-        return [self.slowo_na_id.get(t, self.UNK) for t in tokeny]
+        return [self.slowo_na_id.get(z, self.UNK) for z in tekst.lower()]
 
     def dekoduj(self, ids):
-        """
-        Zamienia listę numerów z powrotem na tekst.
-        """
-        slowa = [self.id_na_slowo.get(i, "<UNK>") for i in ids]
-        return " ".join(slowa)
+        znaki = [self.id_na_slowo.get(i, "?") for i in ids]
+        return "".join(znaki)

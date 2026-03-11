@@ -15,6 +15,7 @@ import numpy as np
 import json
 import os
 import hashlib
+import random
 
 from tokenizer    import Tokenizer
 from transformer  import MiniGPT, Adam, softmax
@@ -30,8 +31,8 @@ N_WARSTW      = 4        # więcej warstw = głębszy model
 N_GLOWIC      = 4        # głowice Multi-Head Attention
 DROPOUT       = 0.05      # mniej dropout = lepsze zapamiętanie
 EPOKI         = 3000     # więcej epok = lepsze zapamiętanie
-LR            = 0.003    # wyższy LR = szybsza nauka)
-MAKS_DLUGOSC  = 64       # dłuższy kontekst
+LR            = 0.001    # wyższy LR = szybsza nauka)
+MAKS_DLUGOSC  = 256      # dłuższy kontekst
 BATCH_SIZE    = 32       # ← NOWE
 
 # Przyspieszenie GPU – cuDNN automatycznie dobiera najszybszy algorytm
@@ -92,6 +93,7 @@ def wczytaj_cache(model, hash_pliku):
     model.load_state_dict(dane["state_dict"])
 
     return dane["tokenizer"], True
+
 def eksportuj_model(model, tokenizer, hash_pliku, sciezka="model_export.pt"):
     """
     Zapisuje skompresowany model do wysyłania na GitHuba.
@@ -168,106 +170,66 @@ def cross_entropy_loss(logits, cel_ids):
 # KROK 3: TRENING (PyTorch)
 # ============================================================
 
+def zbuduj_batch(zdania_ids, batch_size, maks_dlugosc):
+    probka = random.sample(zdania_ids, min(batch_size, len(zdania_ids)))
+    probka = [ids[:maks_dlugosc] for ids in probka if len(ids) >= 2]
+    dlugosc = max(len(ids) for ids in probka)
+
+    wejscie_lista = []
+    cel_lista     = []
+    for ids in probka:
+        w = ids[:-1]
+        c = ids[1:]
+        pad_len = dlugosc - 1 - len(w)
+        w = w + [0] * pad_len
+        c = c + [0] * pad_len
+        wejscie_lista.append(w)
+        cel_lista.append(c)
+
+    wejscie = torch.tensor(wejscie_lista, dtype=torch.long, device=URZADZENIE)
+    cel     = torch.tensor(cel_lista,     dtype=torch.long, device=URZADZENIE)
+    return wejscie, cel
+
 def trenuj(model, optymalizator, zdania_ids):
-    """
-    Trening z batch processing – wysyłamy wiele zdań naraz na GPU.
-
-    Kroki:
-      1. Posortuj zdania po długości (zmniejsza ilość paddingu)
-      2. Podziel na batche po BATCH_SIZE zdań
-      3. Wyrównaj zdania w batchu paddingiem do tej samej długości
-      4. Wyślij cały batch na GPU jednocześnie
-      5. Oblicz stratę ignorując tokeny PAD
-    """
-    import torch
-    import random
-    from transformer import URZADZENIE
-
-    kryterium = torch.nn.CrossEntropyLoss(ignore_index=0)  # 0 = PAD, ignoruj go
-
-    # Filtruj za krótkie zdania
-    zdania = [ids for ids in zdania_ids if len(ids) >= 2]
-
-    # Losowa kolejność każdą epokę – model nie zapamiętuje kolejności
-    random.shuffle(zdania)
-
+    kryterium = torch.nn.CrossEntropyLoss(ignore_index=0)
+    n_batchy  = max(1, min(20, len(zdania_ids) // BATCH_SIZE))
     calkowita_strata = 0.0
-    n_batchy = 0
 
-    # Podziel na batche
-    for i in range(0, len(zdania), BATCH_SIZE):
-        batch = zdania[i : i + BATCH_SIZE]
-
-        # Znajdź najdłuższe zdanie w batchu
-        maks_len = max(len(ids) for ids in batch)
-
-        # Wyrównaj wszystkie zdania paddingiem (0 = PAD)
-        wejscia = []
-        cele    = []
-        for ids in batch:
-            brakuje = maks_len - len(ids)
-            # wejście: wszystko oprócz ostatniego tokenu
-            w = ids[:-1] + [0] * (brakuje + 1)
-            # cel: wszystko oprócz pierwszego tokenu
-            c = ids[1:]  + [0] * (brakuje + 1)
-            wejscia.append(w[:maks_len])
-            cele.append(c[:maks_len])
-
-        # Zamień na tensory i wyślij na GPU
-        # kształt: (BATCH_SIZE, długość_sekwencji)
-        W = torch.tensor(wejscia, dtype=torch.long, device=URZADZENIE)
-        C = torch.tensor(cele,    dtype=torch.long, device=URZADZENIE)
-
+    for _ in range(n_batchy):
+        wejscie, cel = zbuduj_batch(zdania_ids, BATCH_SIZE, MAKS_DLUGOSC)
         optymalizator.zeruj_gradienty()
-
-        # Przetwarzaj cały batch naraz przez model
-        B, T = W.shape
-        W_flat = W.reshape(B * T)
-        logits = model.forward(W_flat)
-
-        # logits może mieć inną długość niż B*T (przez maks_dlugosc)
-        # dlatego dopasowujemy cel do rzeczywistej długości logits
-        L = logits.shape[0]
-        strata = kryterium(logits, C.reshape(B * T)[:L])
+        logits = model.forward(wejscie)          # (B, T, V)
+        B, T, V = logits.shape
+        strata = kryterium(logits.reshape(B * T, V), cel.reshape(B * T))
         calkowita_strata += strata.item()
-        n_batchy += 1
-
-        # Backward + gradient clipping + krok optymalizatora
         strata.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optymalizator.krok()
 
-    return calkowita_strata / max(n_batchy, 1)
+    return calkowita_strata / n_batchy
 
 # ============================================================
 # KROK 4: GENEROWANIE TEKSTU
 # ============================================================
 
-def generuj(model, tokenizer, slowo_start, max_slow=10, temperatura=1.0):
-    """
-    Generuje tekst token po tokenie (autoregresywnie).
-    torch.no_grad() wyłącza liczenie gradientów – szybsze generowanie.
-    """
-    import torch
-    from transformer import URZADZENIE
-
-    ids = tokenizer.koduj(slowo_start)
-    if not ids or ids[0] == tokenizer.UNK:
-        return f"[Nie znam słowa '{slowo_start}']"
+def generuj(model, tokenizer, tekst_start, max_znakow=60, temperatura=1.0):
+    ids = tokenizer.koduj(tekst_start)
 
     with torch.no_grad():
-        for _ in range(max_slow):
+        for _ in range(max_znakow):
             wejscie = ids[-MAKS_DLUGOSC:]
             logits  = model.forward(wejscie)
 
-            # Pobierz logity ostatniego tokenu jako numpy
             ostatnie = logits[-1].cpu().numpy()
             ostatnie = ostatnie / max(temperatura, 0.01)
             probs    = softmax(ostatnie)
             nastepny = int(np.argmax(probs) if temperatura < 0.05
-                          else np.random.choice(len(probs), p=probs))
+                           else np.random.choice(len(probs), p=probs))
+
             ids.append(nastepny)
-            if nastepny == tokenizer.PAD:
+
+            tekst_do_tej_pory = tokenizer.dekoduj(ids)
+            if "koniec" in tekst_do_tej_pory[-10:]:
                 break
 
     return tokenizer.dekoduj(ids)
@@ -432,63 +394,38 @@ if __name__ == "__main__":
 
 
     def generuj_odpowiedz(pytanie, historia, temperatura):
-        import torch
-        from transformer import URZADZENIE
-
         pytanie = pytanie.lower().strip().rstrip("?")
-        pytanie = " ".join(napraw_ogonki(s) for s in pytanie.split())
-
-        # Napraw ogonki w każdym słowie
-        pytanie = " ".join(napraw_ogonki(s) for s in pytanie.split())
-
-        if len(pytanie.split()) == 1:
-            if tokenizer.koduj(pytanie)[0] == tokenizer.UNK:
-                return f"Nie znam słowa '{pytanie}'. Dodaj je do dane.json!"
-            pytanie = f"co to jest {pytanie}"
-
-        stop_slowa = {"co","to","jest","gdzie","jaka","czym","kim",
-                      "jak","się","masz","czy","ile","kto","kiedy"}
-        nieznane = [s for s in pytanie.split()
-                    if s not in stop_slowa
-                    and tokenizer.koduj(s)[0] == tokenizer.UNK]
-        if nieznane:
-            return f"Nie znam słów: {', '.join(nieznane)}. Dodaj je do dane.json!"
-
-        kontekst = buduj_kontekst(historia, pytanie)
-        ids      = tokenizer.koduj(kontekst)
-
-        ostatnie_n = []  # do wykrywania zapętlenia
+        kontekst = f"użytkownik {pytanie} asystent"
+        ids = tokenizer.koduj(kontekst)
 
         with torch.no_grad():
-            ostatnie_n = []
-            for _ in range(15):
-                logits   = model.forward(ids[-MAKS_DLUGOSC:])
+            for _ in range(300):
+                logits = model.forward(ids[-MAKS_DLUGOSC:])
                 ostatnie = logits[-1].cpu().numpy() / max(temperatura, 0.01)
-                probs    = softmax(ostatnie)
+                probs = softmax(ostatnie)
                 nastepny = int(np.argmax(probs) if temperatura < 0.05
                                else np.random.choice(len(probs), p=probs))
-
-                if nastepny == id_koniec or nastepny == tokenizer.PAD:
-                    break
-
-                    # Wykryj zapętlenie – jeśli ten sam token 3 razy z rzędu → stop
-                ostatnie_n.append(nastepny)
-                if len(ostatnie_n) >= 4 and len(set(ostatnie_n[-4:])) <= 2:
-                    break
-
-                ostatnie_n.append(nastepny)
-                if len(ostatnie_n) >= 4 and len(set(ostatnie_n[-4:])) <= 2:
-                    break
                 ids.append(nastepny)
 
-        wszystkie = tokenizer.dekoduj(ids).split()
-        if "asystent" in wszystkie:
-            idx       = len(wszystkie) - 1 - wszystkie[::-1].index("asystent")
-            odpowiedz = " ".join(wszystkie[idx + 1:])
-        else:
-            odpowiedz = " ".join(wszystkie)
+                tekst = tokenizer.dekoduj(ids)
+                if "koniec" in tekst[-10:]:
+                    break
 
-        odpowiedz = odpowiedz.replace("koniec", "").replace("użytkownik", "").strip()
+        tekst = tokenizer.dekoduj(ids)
+
+        # wyciągnij ostatnią odpowiedź po "asystent"
+        if "asystent" in tekst:
+            idx = tekst.rfind("asystent") + len("asystent")
+            odpowiedz = tekst[idx:]
+        else:
+            odpowiedz = tekst
+
+        # utnij na "koniec" lub "użytkownik"
+        for stop in ["koniec", "użytkownik"]:
+            if stop in odpowiedz:
+                odpowiedz = odpowiedz[:odpowiedz.index(stop)]
+
+        odpowiedz = odpowiedz.strip()
         return odpowiedz if odpowiedz else "..."
 
     while True:

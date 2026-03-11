@@ -1,5 +1,6 @@
 # ============================================================
-#  TRANSFORMER – mini-GPT w PyTorch z obsługą CUDA
+#  TRANSFORMER – mini-GPT w PyTorch
+#  Prosta architektura GPT bez TransformerEncoder
 # ============================================================
 
 import torch
@@ -10,60 +11,87 @@ URZADZENIE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def softmax(x, os=-1):
-    """Zostawiamy dla kompatybilności z main.py"""
     x = x - np.max(x, axis=os, keepdims=True)
     e = np.exp(x)
     return e / e.sum(axis=os, keepdims=True)
 
 
-class MiniGPT(nn.Module):
-    """
-    Mini-GPT w PyTorch z Multi-Head Attention, Dropout, LayerNorm.
-    PyTorch sam oblicza gradienty – nie piszemy backward() ręcznie!
-    """
+# ────────────────────────────────────────────────────────────
+# Jeden blok Transformera
+# ────────────────────────────────────────────────────────────
 
-    def __init__(self, rozmiar_slownika, wymiar=128, n_warstw=4,
-                 n_glowic=4, dropout=0.1, maks_dlugosc=64):
+class GPTBlok(nn.Module):
+    def __init__(self, wymiar, n_glowic, dropout):
         super().__init__()
+        self.ln1  = nn.LayerNorm(wymiar)
+        self.ln2  = nn.LayerNorm(wymiar)
+        self.attn = nn.MultiheadAttention(
+            embed_dim   = wymiar,
+            num_heads   = n_glowic,
+            dropout     = dropout,
+            batch_first = True,
+        )
+        self.ff = nn.Sequential(
+            nn.Linear(wymiar, wymiar * 4),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(wymiar * 4, wymiar),
+            nn.Dropout(dropout),
+        )
 
+    def forward(self, x):
+        T = x.shape[1]
+        # Maska causalna
+        maska = torch.triu(
+            torch.ones(T, T, device=x.device), diagonal=1
+        ).bool()
+
+        # Self-Attention z residual
+        x2 = self.ln1(x)
+        x2, _ = self.attn(x2, x2, x2, attn_mask=maska, is_causal=True)
+        x = x + x2
+
+        # Feed-Forward z residual
+        x = x + self.ff(self.ln2(x))
+        return x
+
+
+# ────────────────────────────────────────────────────────────
+# Główny model
+# ────────────────────────────────────────────────────────────
+
+class MiniGPT(nn.Module):
+    def __init__(self, rozmiar_slownika, wymiar=128, n_warstw=4,
+                 n_glowic=4, dropout=0.1, maks_dlugosc=256):
+        super().__init__()
         self.wymiar       = wymiar
         self.maks_dlugosc = maks_dlugosc
 
-        # Embedding słów i pozycji
-        self.embedding     = nn.Embedding(rozmiar_slownika, wymiar)
-        self.pos_embedding = nn.Embedding(maks_dlugosc, wymiar)
-        self.dropout_wej   = nn.Dropout(dropout)
-
-        # Bloki Transformera (Multi-Head Attention + FF + LN)
-        warstwa = nn.TransformerEncoderLayer(
-            d_model        = wymiar,
-            nhead          = n_glowic,
-            dim_feedforward= wymiar * 4,
-            dropout        = dropout,
-            activation     = "relu",
-            batch_first    = True,
-            norm_first     = True,
+        self.tok_emb = nn.Embedding(rozmiar_slownika, wymiar)
+        self.pos_emb = nn.Embedding(maks_dlugosc, wymiar)
+        self.drop    = nn.Dropout(dropout)
+        self.bloki   = nn.Sequential(
+            *[GPTBlok(wymiar, n_glowic, dropout) for _ in range(n_warstw)]
         )
-        self.transformer = nn.TransformerEncoder(
-            warstwa,
-            num_layers          = n_warstw,
-            enable_nested_tensor= False,   # ← usuwa ostrzeżenie
-        )
+        self.ln_f    = nn.LayerNorm(wymiar)
+        self.glowa   = nn.Linear(wymiar, rozmiar_slownika, bias=False)
 
-        # Warstwa wyjściowa
-        self.glowa        = nn.Linear(wymiar, rozmiar_slownika, bias=False)
-        self.glowa.weight = self.embedding.weight  # weight tying
+        # Inicjalizacja wag
+        self.apply(self._init_wagi)
 
-        # Inicjalizacja
-        nn.init.normal_(self.embedding.weight,     std=0.02)
-        nn.init.normal_(self.pos_embedding.weight, std=0.02)
+        self.glowa.weight = self.tok_emb.weight  # weight tying
 
         total = sum(p.numel() for p in self.parameters())
         print(f"  🔢 Parametry modelu: {total:,}")
         print(f"  💻 Urządzenie: {URZADZENIE}")
 
-    def _maska(self, T):
-        return torch.triu(torch.ones(T, T, device=URZADZENIE), diagonal=1).bool()
+    def _init_wagi(self, modul):
+        if isinstance(modul, nn.Linear):
+            nn.init.normal_(modul.weight, mean=0.0, std=0.02)
+            if modul.bias is not None:
+                nn.init.zeros_(modul.bias)
+        elif isinstance(modul, nn.Embedding):
+            nn.init.normal_(modul.weight, mean=0.0, std=0.02)
 
     def forward(self, ids):
         if isinstance(ids, (list, np.ndarray)):
@@ -71,29 +99,41 @@ class MiniGPT(nn.Module):
         else:
             ids = ids.to(URZADZENIE)
 
-        T = ids.shape[0]
-        T = min(T, self.maks_dlugosc)
-        ids = ids[:T]
-        poz = torch.arange(T, device=URZADZENIE)
+        tryb_batch = ids.dim() == 2
 
-        x = self.embedding(ids) + self.pos_embedding(poz)
-        x = self.dropout_wej(x)
-        x = x.unsqueeze(0)
-        x = self.transformer(x, mask=self._maska(T), is_causal=True)
-        x = x.squeeze(0)
-        return self.glowa(x)
+        if tryb_batch:
+            B, T = ids.shape
+            T = min(T, self.maks_dlugosc)
+            ids = ids[:, :T]
+        else:
+            T = min(ids.shape[0], self.maks_dlugosc)
+            ids = ids[:T]
+            ids = ids.unsqueeze(0)
+
+        poz = torch.arange(T, device=URZADZENIE)
+        x = self.drop(self.tok_emb(ids) + self.pos_emb(poz))
+        x = self.bloki(x)
+        x = self.ln_f(x)
+        logits = self.glowa(x)
+
+        if not tryb_batch:
+            logits = logits.squeeze(0)
+
+        return logits
 
     def ustaw_trening(self, trening=True):
         self.train() if trening else self.eval()
 
 
 class Adam:
-    """Wrapper na PyTorch AdamW"""
-    def __init__(self, lr=0.003, parametry=None):
-        self._opt = torch.optim.AdamW(parametry, lr=lr, weight_decay=0.01)
+    def __init__(self, lr=0.001, parametry=None):
+        self._opt = torch.optim.AdamW(
+            parametry, lr=lr, weight_decay=0.01,
+            betas=(0.9, 0.95)
+        )
 
     def krok(self, _=None):
         self._opt.step()
 
     def zeruj_gradienty(self):
-        self._opt.zero_grad()
+        self._opt.zero_grad(set_to_none=True)
