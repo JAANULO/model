@@ -1,11 +1,11 @@
-# 🤖 Mini-GPT – Transformer od zera
+#  Mini-GPT – Transformer od zera
 
 Hobbystyczny projekt budowania modelu językowego od podstaw w Pythonie z PyTorch.  
 Projekt składa się z dwóch wersji – generatywnej (v1) i wyszukiwawczej z asystentem regulaminowym (v2).
 
 ---
 
-## 📌 Opis projektu
+##  Opis projektu
 
 ### Wersja 1.0 – Mini-GPT generatywny
 
@@ -60,7 +60,7 @@ i generuje ludzką odpowiedź
 
 ---
 
-## 🚀 Instalacja i uruchomienie
+##  Instalacja i uruchomienie
 
 ### Wymagania
 
@@ -140,7 +140,7 @@ python main.py
 
 ---
 
-## 🛠️ Technologie
+##  Technologie
 
 - **Python 3.13**
 - **PyTorch** – architektura Transformer, trening GPU
@@ -151,7 +151,7 @@ python main.py
 
 ---
 
-## 💻 Sprzęt testowy
+##  Sprzęt testowy
 
 - CPU: Intel Core i7-11700F
 - GPU: NVIDIA RTX 3060 Ti 8GB

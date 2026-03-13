@@ -22,6 +22,63 @@ def usun_polskie_znaki(tekst):
     )
     return tekst.translate(zamiana)
 
+SYNONIMY = {
+
+    # egzaminy
+    "egzaminu": "egzamin", "egzaminie": "egzamin", "egzaminow": "egzamin",
+    "zdac":     "egzamin", "zdawac":    "egzamin", "oblac": "egzamin",
+    "poprawka": "egzamin", "poprawke":  "egzamin",
+
+    # zaliczenia
+    "zaliczenia": "zaliczenie", "zaliczeniu": "zaliczenie",
+    "zaliczyc":   "zaliczenie", "kolokwium":  "zaliczenie",
+
+    # urlopy
+    "urlopu":    "urlop", "urlopie":   "urlop",
+    "dziekanski":"urlop", "zdrowotny": "urlop",
+
+    # skreślenia
+    "skreslic":    "skreslanym", "skreslanego": "skreslanym",
+    "skreslanym":  "skreslanym", "skreslonego": "skreslanym",
+    "wydalenie":   "skreslanym", "wydalic":     "skreslanym",
+
+    # wznowienia
+    "wznowic":    "wznowienie", "wznowienia": "wznowienie",
+    "wznowieniu": "wznowienie", "przywrocic": "wznowienie",
+
+    # oceny
+    "ocene":   "ocena", "oceny":   "ocena",
+    "srednia": "ocena", "wyników": "ocena",
+
+    # praca dyplomowa
+    "dyplomowa":  "dyplom", "dyplomowej": "dyplom",
+    "inzynierska":"dyplom", "magisterska":"dyplom",
+    "obrone":     "dyplom", "obrona":     "dyplom",
+
+    # nieobecności
+    "nieobecnosci": "nieobecnosc", "nieobecnoscia": "nieobecnosc",
+    "opuscic":      "nieobecnosc", "opuszczac":     "nieobecnosc",
+
+    # powtarzanie
+    "powtarzac":  "powtarzanie", "powtorzyc": "powtarzanie",
+    "powtarzania":"powtarzanie",
+
+    # praktyki
+    "praktyk":  "praktyki", "praktyke": "praktyki",
+
+    # studia
+    "studiow": "studia", "studiach": "studia",
+    "semestrze": "semestr", "semestru": "semestr",
+    "tygodniu":  "tydzien",  "tygodnie": "tydzien", "tygodni": "tydzien",
+}
+
+
+
+
+def normalizuj(slowo):
+    """zamienia odmianę słowa na formę podstawową używając słownika synonimów"""
+    return SYNONIMY.get(slowo, slowo)
+
 
 def tokenizuj(tekst):
     """
@@ -42,7 +99,7 @@ def tokenizuj(tekst):
         'go', 'mu', 'jej', 'ich', 'im', 'je', 'dla', 'gdy', 'az',
         'tez', 'juz', 'jesli', 'ze', 'tego', 'tej', 'jego', 'jako'
     }
-    return [s for s in slowa if s not in stopwords and len(s) > 1]
+    return [normalizuj(s) for s in slowa if s not in stopwords and len(s) > 1]
 
 
 # ── Krok 2: budowanie macierzy TF-IDF ────────────────────────────────────────

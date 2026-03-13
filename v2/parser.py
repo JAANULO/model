@@ -6,6 +6,7 @@ Wczytuje regulamin PDF i dzieli go na fragmenty (paragrafy).
 import pdfplumber
 import json
 import re
+import os
 
 PLIK_PDF = "regulamin.pdf"
 PLIK_WYJSCIOWY = "baza_wiedzy.json"
@@ -39,7 +40,7 @@ def wyczysc_tekst(tekst):
 def podziel_na_fragmenty(tekst):
     """dzieli tekst na fragmenty wedlug paragralow regulaminu"""
     fragmenty = []
-    wzorzec = r'(?=§\s*\d+\.?|Rozdział\s+[IVX]+)'
+    wzorzec = r'(?:(?<=\n)|(?<=\n\n))(?=§\s*\d+\.\s+(?!ust\.|pkt)\S)'
     czesci = re.split(wzorzec, tekst)
 
     for czesc in czesci:
@@ -48,6 +49,12 @@ def podziel_na_fragmenty(tekst):
             continue
         linie = czesc.split('\n')
         tytul = linie[0].strip()
+
+        # akceptuj tylko paragrafy z nazwą własną
+        if not re.match(r'^§\s*\d+\.\s+(?!ust\.|pkt|ust$)\S', tytul) and \
+           not re.match(r'^Rozdział\s+[IVX]+', tytul):
+            continue
+
         tresc = re.sub(r'\s+', ' ', ' '.join(linie).strip())
         fragmenty.append({"tytul": tytul, "tresc": tresc})
 
@@ -80,6 +87,13 @@ def main():
     print(f"\nZapisywanie do {PLIK_WYJSCIOWY}...")
     zapisz_baze(fragmenty, PLIK_WYJSCIOWY)
     print("Gotowe!")
+
+    #for f in fragmenty:
+        #if '34' in f['tytul']:
+            #print(f"§34 długość: {len(f['tresc'])}")
+            #print(f"§34 treść: {f['tresc'][:200]}")
+
+    print("Zapisano do:", os.path.abspath(PLIK_WYJSCIOWY))
     return fragmenty
 
 

@@ -1,0 +1,12 @@
+2026-03-13 23:11:46 | === Sesja rozpoczęta ===
+2026-03-13 23:11:56 | === Sesja przerwana ===
+
+2026-03-13 23:11:58 | === Sesja rozpoczęta ===
+2026-03-13 23:12:17 | P: ile razy mozna podejsc do egzaminu
+2026-03-13 23:12:17 | O: § 18. Egzaminy (16%)
+2026-03-13 23:12:37 | === Sesja przerwana ===
+
+2026-03-13 23:13:18 | === Sesja rozpoczęta ===
+2026-03-13 23:13:21 | Brak odpowiedzi: 'kto wynal internet' (najlepsze: 0.00)
+2026-03-13 23:13:26 | === Sesja przerwana ===
+
