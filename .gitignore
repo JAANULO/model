@@ -1,13 +1,29 @@
-# Duży cache - tylko lokalnie
+# Cache modelu
 model_cache.pkl
 *.pkl
 
-# Eksport modelu - wysyłamy na GitHub (ten plik NIE jest ignorowany)
+# Eksport modelu (NIE ignorowany - wysyłamy na GitHub)
+# model_export.pt
 
-# Python cache
+# Python
 __pycache__/
 *.pyc
+*.pyo
 
 # Środowisko wirtualne
 venv/
 .env
+
+# IDE
+.vscode/
+.idea/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Dane generowane automatycznie (v2)
+v2/data/baza_wiedzy.json
+v2/data/baza_wiedzy_cache.pkl
+v2/logs/
+log.txt

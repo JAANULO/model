@@ -17,8 +17,10 @@ import os
 import hashlib
 import random
 
-from tokenizer    import Tokenizer
-from transformer  import MiniGPT, Adam, softmax
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from shared.transformer import MiniGPT, Adam, softmax, URZADZENIE
+from shared.tokenizer   import Tokenizer
 
 # ============================================================
 # USTAWIENIA

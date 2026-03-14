@@ -8,8 +8,8 @@ import os
 import json
 import logging
 from datetime import datetime
-from wyszukiwarka import Wyszukiwarka
-from formatowanie import formatuj_odpowiedz
+from core.wyszukiwarka import Wyszukiwarka
+from core.formatowanie import formatuj_odpowiedz
 
 
 PLIK_BAZY     = "baza_wiedzy.json"

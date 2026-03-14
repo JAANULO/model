@@ -5,8 +5,8 @@ Adres:        http://localhost:5000
 """
 
 from flask import Flask, request, jsonify, render_template
-from wyszukiwarka import Wyszukiwarka
-from formatowanie import formatuj_odpowiedz
+from core.wyszukiwarka import Wyszukiwarka
+from core.formatowanie import formatuj_odpowiedz
 import logging
 import os
 from db import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki, inicjalizuj()

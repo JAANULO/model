@@ -36,8 +36,10 @@ import torch
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled   = True
 
-from transformer import MiniGPT, Adam, softmax, URZADZENIE
-from tokenizer   import Tokenizer
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from shared.transformer import MiniGPT, Adam, softmax, URZADZENIE
+from shared.tokenizer   import Tokenizer
 
 # ============================================================
 # USTAWIENIA
