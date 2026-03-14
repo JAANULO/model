@@ -9,6 +9,7 @@ from wyszukiwarka import Wyszukiwarka
 from formatowanie import formatuj_odpowiedz
 import logging
 import os
+from db import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki, inicjalizuj()
 
 app = Flask(__name__)
 
@@ -97,7 +98,7 @@ def zapytaj():
 
     odp = formatuj_odpowiedz(pytanie, wynik)
 
-    logging.info(f"P: {pytanie} | O: {wynik['tytul']} ({int(wynik['podobienstwo']*100)}%)")
+    pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"], baza)
 
     if isinstance(odp, dict):
         return jsonify({
@@ -109,39 +110,22 @@ def zapytaj():
             "pelna_tresc":   odp["pelna_tresc"],
             "tytul2":        wynik2["tytul"] if wynik2 else None,
             "podobienstwo2": wynik2["podobienstwo"] if wynik2 else None,
+            "pytanie_id": pid,
         })
     # fallback dla błędów (odp to string)
     return jsonify({"odpowiedz": odp, "tytul": None, "podobienstwo": 0})
 
 
+@app.route("/feedback", methods=["POST"])
+def feedback():
+    dane = request.get_json(force=True)
+    zapisz_feedback(dane["pytanie_id"], dane["ocena"])
+    return jsonify({"ok": True})
+
+
 @app.route("/statystyki")
 def statystyki():
-    """parsuje log.txt i zwraca podstawowe statystyki sesji"""
-    import re as _re
-    stats = {"pytania": 0, "srednie_podobienstwo": 0, "top_paragrafy": {}}
-    podobienstwa = []
-
-    if os.path.exists(PLIK_LOG):
-        with open(PLIK_LOG, encoding="utf-8") as f:
-            for linia in f:
-                if "| P: " in linia:
-                    stats["pytania"] += 1
-                m = _re.search(r'\((\d+)%\)', linia)
-                if m:
-                    podobienstwa.append(int(m.group(1)))
-                m2 = _re.search(r'\| O: (.+?) \(', linia)
-                if m2:
-                    par = m2.group(1).strip()
-                    stats["top_paragrafy"][par] = stats["top_paragrafy"].get(par, 0) + 1
-
-    if podobienstwa:
-        stats["srednie_podobienstwo"] = round(sum(podobienstwa) / len(podobienstwa), 1)
-
-    top = sorted(stats["top_paragrafy"].items(), key=lambda x: x[1], reverse=True)[:5]
-    stats["top_paragrafy"] = [{"tytul": t, "liczba": n} for t, n in top]
-    stats["fragmentow_w_bazie"] = len(wyszukiwarka.fragmenty) if wyszukiwarka else 0
-    stats["slow_w_slowniku"]    = len(wyszukiwarka.idf) if wyszukiwarka else 0
-    return jsonify(stats)
+    return jsonify(pobierz_statystyki())
 
 
 # ── start ─────────────────────────────────────────────────────────────────────

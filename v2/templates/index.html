@@ -388,6 +388,14 @@
   .btn-rozwin:hover { border-color: var(--accent); color: var(--accent); }
   .pelna-tresc { margin-top: 10px; font-size: 11px; line-height: 1.7; color: var(--muted); border-left: 2px solid var(--border); padding-left: 12px; white-space: pre-wrap; }
 
+  .feedback-row { display:flex; gap:6px; margin-top:8px; }
+  .btn-feedback {
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 10px; cursor: pointer;
+    font-size: 13px; transition: all 0.15s;
+  }
+  .btn-feedback:hover { border-color: var(--accent); transform: scale(1.1); }
+
   .hint {
 
     font-size: 10px;
@@ -572,9 +580,22 @@
         <div class="bot-content">
           <div class="bubble">${renderujOdpowiedz(dane)}</div>
           ${sourcesHtml ? `<div class="source-row">${sourcesHtml}</div>` : ''}
+
           ${barsHtml}
+          <div class="feedback-row">
+            <button class="btn-feedback" data-ocena="1" onclick="wyślijFeedback(this)">👍</button>
+            <button class="btn-feedback" data-ocena="-1" onclick="wyślijFeedback(this)">👎</button>
+          </div>
         </div>
       </div>`;
+
+
+    // zapisz pytanie_id na przyciskach feedbacku
+    if (dane.pytanie_id) {
+      wrap.querySelectorAll('.btn-feedback').forEach(btn => {
+        btn.dataset.pid = dane.pytanie_id;
+      });
+    }
 
     chatEl.appendChild(wrap);
     scrollDol();
@@ -621,7 +642,22 @@
     }
   }
 
+  async function wyślijFeedback(btn) {
+    const pid   = btn.dataset.pid;
+    const ocena = parseInt(btn.dataset.ocena);
+    if (!pid) return;
+    btn.closest('.feedback-row').innerHTML =
+      ocena === 1 ? '<span style="color:var(--accent)">Dzięki! ✓</span>'
+                  : '<span style="color:var(--muted)">Zapisano, poprawimy ✓</span>';
+    await fetch('/feedback', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({pytanie_id: parseInt(pid), ocena})
+    });
+  }
+
   function scrollDol() {
+
     chatEl.scrollTop = chatEl.scrollHeight;
   }
 

@@ -253,12 +253,18 @@ def oblicz_tf(slowa):
         tf[slowo] = liczba / len(slowa)
     return tf
 
+# ── BM25 (zastępuje TF-IDF) ───────────────────────────────────────────────────
+# k1 = nasycenie: jak szybko kolejne wystąpienia słowa przestają podbijać wynik
+# b  = normalizacja: jak bardzo długość dokumentu wpływa na wynik
+# wartości standardowe z literatury — działają dobrze dla większości zbiorów
+BM25_K1 = 1.5
+BM25_B  = 0.75
 
-def oblicz_idf(wszystkie_tokeny):
+def oblicz_idf_bm25(wszystkie_tokeny):
     """
-    oblicza idf dla kazdego slowa w calej bazie.
-    rzadkie slowa dostaja wysoki wynik, pospolite niski.
-    wynik: slownik {slowo: wartosc_idf}
+    IDF w wersji BM25 — wzór Robertson/Sparck-Jones.
+    Różnica vs klasyczne IDF: log((N - df + 0.5) / (df + 0.5))
+    Słowa w ponad połowie dokumentów mogą dostać wynik ujemny (są za pospolite).
     """
     n = len(wszystkie_tokeny)
     idf = {}
@@ -268,26 +274,47 @@ def oblicz_idf(wszystkie_tokeny):
         wszystkie_slowa.update(tokeny)
 
     for slowo in wszystkie_slowa:
-        liczba_fragmentow = sum(
-            1 for tokeny in wszystkie_tokeny if slowo in tokeny
-        )
-        idf[slowo] = math.log(n / (1 + liczba_fragmentow))
+        df = sum(1 for tokeny in wszystkie_tokeny if slowo in tokeny)
+        idf[slowo] = math.log((n - df + 0.5) / (df + 0.5) + 1)
 
     return idf
 
 
-def zbuduj_wektory(wszystkie_tokeny, idf):
+def oblicz_idf(wszystkie_tokeny):
+    """zachowane dla kompatybilności — używa BM25"""
+    return oblicz_idf_bm25(wszystkie_tokeny)
+
+def zbuduj_wektory_bm25(wszystkie_tokeny, idf):
     """
-    dla kazdego fragmentu buduje wektor tf-idf.
-    wektor to slownik {slowo: wartosc_tfidf}
+    Buduje wektory BM25 zamiast TF-IDF.
+    Kluczowa różnica: tf jest normalizowane przez długość dokumentu.
+    Wzór: idf * (tf * (k1+1)) / (tf + k1 * (1 - b + b * dl/avgdl))
+      dl    = długość bieżącego dokumentu
+      avgdl = średnia długość dokumentu w całej bazie
     """
+    avgdl = sum(len(t) for t in wszystkie_tokeny) / max(len(wszystkie_tokeny), 1)
+
     wektory = []
     for tokeny in wszystkie_tokeny:
-        tf = oblicz_tf(tokeny)
-        wektor = {slowo: tf_val * idf.get(slowo, 0)
-                  for slowo, tf_val in tf.items()}
+        dl = len(tokeny)
+        licznik = {}
+        for slowo in tokeny:
+            licznik[slowo] = licznik.get(slowo, 0) + 1
+
+        wektor = {}
+        for slowo, tf in licznik.items():
+            idf_val = idf.get(slowo, 0)
+            licznik_bm25 = tf * (BM25_K1 + 1)
+            mianownik_bm25 = tf + BM25_K1 * (1 - BM25_B + BM25_B * dl / avgdl)
+            wektor[slowo] = idf_val * (licznik_bm25 / mianownik_bm25)
+
         wektory.append(wektor)
+
     return wektory
+
+def zbuduj_wektory(wszystkie_tokeny, idf):
+    """zachowane dla kompatybilności — używa BM25"""
+    return zbuduj_wektory_bm25(wszystkie_tokeny, idf)
 
 
 # ── Krok 3: podobienstwo cosinusowe ──────────────────────────────────────────
