@@ -122,16 +122,57 @@ def main():
 
         else:
             ROZSZERZENIA = {
-                "wznow":       "wznowienie studiów przywrócenie praw studenta",
-                "skresla":     "skreślenie lista studentów rezygnacja niepodjęcie niezłożenie",
-                "ile tygodni": "tygodnie semestr zajęcia kalendarz",
-                "ile semestr": "tygodnie semestr zajęcia kalendarz",
-                "tygodni":     "tygodnie semestr zajęcia kalendarz",
-                "jak dlugo":   "tygodnie semestr zajęcia kalendarz",
-                "podejsc":     "egzamin termin dwukrotnie składanie",
-                "podchodzic":  "egzamin termin dwukrotnie składanie",
-                "drugi raz":   "egzamin termin dwukrotnie składanie",
-                "poprawka":    "egzamin termin dwukrotnie składanie",
+                # egzamin
+                "wznow":         "wznowienie studiów przywrócenie praw studenta",
+                "drugi raz":     "egzamin termin dwukrotnie składanie",
+                "poprawka":      "egzamin termin dwukrotnie składanie",
+                "podejsc":       "egzamin termin dwukrotnie składanie",
+                "podchodzic":    "egzamin termin dwukrotnie składanie",
+                "kolos":         "egzamin zaliczenie termin",
+                "obleje":        "egzamin niezdany termin poprawkowy",
+                "nie zdam":      "egzamin niezdany termin poprawkowy",
+                "nie zdalam":    "egzamin niezdany termin poprawkowy",
+                "komisyjny":     "egzamin komisja kwestionowanie oceny",
+                "odwolanie":     "egzamin komisja kwestionowanie oceny",
+                # zaliczenie / warunek
+                "warunek":       "zaliczenie warunkowe powtarzanie przedmiotu",
+                "warunkowo":     "zaliczenie warunkowe powtarzanie przedmiotu",
+                "niezaliczony":  "zaliczenie powtarzanie przedmiotu",
+                # urlop
+                "przerwa":       "urlop dziekański semestr zawieszenie",
+                "ciaza":         "urlop zdrowotny rodzicielski ciąża",
+                "macierzynski":  "urlop rodzicielski ciąża student",
+                "wolne":         "urlop dziekański zawieszenie",
+                # skreślenie
+                "skresla":       "skreślenie lista studentów rezygnacja",
+                "wyrzuc":        "skreślenie wydalenie lista studentów",
+                "rzucic":        "skreślenie rezygnacja lista studentów",
+                "rezygnacja":    "skreślenie rezygnacja lista studentów",
+                # czas trwania
+                "ile tygodni":   "tygodnie semestr zajęcia kalendarz",
+                "ile semestr":   "tygodnie semestr zajęcia kalendarz",
+                "tygodni":       "tygodnie semestr zajęcia kalendarz",
+                "jak dlugo":     "tygodnie semestr zajęcia kalendarz",
+                "ile trwa":      "tygodnie semestr czas trwania",
+                # praca dyplomowa
+                "promotor":      "praca dyplomowa promotor opiekun",
+                "antyplagiat":   "praca dyplomowa plagiat antyplagiat",
+                "obron":         "praca dyplomowa obrona egzamin dyplomowy",
+                "temat pracy":   "praca dyplomowa temat zmiana",
+                # nieobecność
+                "choroba":       "nieobecność usprawiedliwienie zwolnienie",
+                "l4":            "nieobecność usprawiedliwienie zwolnienie lekarskie",
+                "wagary":        "nieobecność zajęcia opuszczenie",
+                # stypendia
+                "stypendium":    "stypendium socjalne naukowe rektora",
+                "zapomoga":      "stypendium zapomoga pomoc finansowa",
+                # administracja
+                "wniosek":       "dziekan podanie wniosek zgoda",
+                "podanie":       "dziekan podanie wniosek zgoda",
+                "ios":           "indywidualna organizacja studiów plan",
+                # ECTS
+                "ects":          "punkty kredyty zaliczenie przedmiot",
+                "kredyty":       "punkty ects zaliczenie przedmiot",
             }
 
             pytanie_do_szukania = pytanie
@@ -140,8 +181,24 @@ def main():
                     pytanie_do_szukania = pytanie + " " + rozszerzenie
                     break
 
+            # krótkie pytania (1-2 słowa) – rozszerz o kontekst ze słownika synonimów
+            if len(pytanie.split()) <= 2:
+                from wyszukiwarka import SYNONIMY
+                slowo_bazowe = pytanie.strip().lower().rstrip('?!')
+                pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]
+                if pasujace:
+                    pytanie_do_szukania = pytanie + " " + " ".join(set(pasujace))
+
+
             wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=1)
             wynik  = wyniki[0] if wyniki else None
+
+            # drugi paragraf – pokazuj tylko gdy podobieństwo bliskie pierwszemu
+            wynik2 = None
+            if len(wyniki) == 2:
+                roznica = wyniki[0]['podobienstwo'] - wyniki[1]['podobienstwo']
+                if roznica < 0.05 or len(pytanie.split()) >= 8:
+                    wynik2 = wyniki[1]
 
             if not wynik or wynik['podobienstwo'] < PROG_PEWNOSCI:
                 print()
@@ -153,7 +210,23 @@ def main():
 
             odp = formatuj_odpowiedz(pytanie, wynik)
             print()
-            print(odp)
+
+            if isinstance(odp, dict):
+                print(f"  {odp['wstep']}")
+                for p in odp['punkty']:
+                    print(f"  • {p}")
+                print(f"\n  📖 Źródło: {odp['tytul']}")
+                if odp['zacheta']:
+                    print(f"  💡 {odp['zacheta']}")
+            else:
+                print(odp)
+
+            if wynik2:
+                print()
+                print("  📎 Powiązany paragraf:")
+                odp2 = formatuj_odpowiedz(pytanie, wynik2)
+                print(odp2)
+
             historia.append((pytanie, odp))
             logging.info(f"P: {pytanie}")
             logging.info(f"O: {wynik['tytul']} ({int(wynik['podobienstwo'] * 100)}%)")

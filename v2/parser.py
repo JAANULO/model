@@ -94,6 +94,17 @@ def main():
             #print(f"§34 treść: {f['tresc'][:200]}")
 
     print("Zapisano do:", os.path.abspath(PLIK_WYJSCIOWY))
+
+    # walidacja – wypisz paragrafy z podejrzanie krótką treścią
+    krotkie = [f for f in fragmenty if len(f['tresc']) < 200]
+    if krotkie:
+        print(f"\n⚠️  {len(krotkie)} paragrafów z bardzo krótką treścią (<200 znaków):")
+        for f in krotkie:
+            print(f"   • {f['tytul'][:60]} — {len(f['tresc'])} znaków")
+        print("   Sprawdź je ręcznie w baza_wiedzy.json\n")
+    else:
+        print("✓ Wszystkie paragrafy mają odpowiednią długość")
+
     return fragmenty
 
 

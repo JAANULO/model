@@ -95,8 +95,10 @@ def wyciagnij_zdania(tresc, max_zdan=3, szukaj=None):
         z = re.sub(r'\s+\d+$', '', z).strip()
         z = re.sub(r'\s+', ' ', z)
         # pomiń za krótkie i za długie
-        if 30 < len(z) < 350:
-            wynik.append(z)
+
+        if 30 < len(z):
+            wynik.append(z[:150].rsplit(' ', 1)[0] + ('…' if len(z) > 150 else ''))
+
         if len(wynik) >= max_zdan:
             break
 
@@ -182,14 +184,24 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
 
 
     # złóż odpowiedź
-    odpowiedz  = wstep
-    odpowiedz += punkty
-    odpowiedz += f"\n\n📖 Źródło: {tytul}"
+    #odpowiedz  = wstep
+    #odpowiedz += punkty
+    #odpowiedz += f"\n\n📖 Źródło: {tytul}"
 
-    if podobienstwo > 0.2:
-        odpowiedz += f"\n💡 {random.choice(ZACHETY)}"
+    #if podobienstwo > 0.2:
+        #odpowiedz += f"\n💡 {random.choice(ZACHETY)}"
 
-    return odpowiedz
+    #return odpowiedz
+    zacheta = random.choice(ZACHETY) if podobienstwo > 0.2 else None
+
+    return {
+        "wstep":    wstep.strip(),
+        "punkty":   zdania if zdania else [tresc[:150]],
+        "tytul":    tytul,
+        "zacheta":  zacheta,
+        "podobienstwo": podobienstwo,
+        "pelna_tresc":  tresc,
+    }
 
 
 # ── test ──────────────────────────────────────────────────────────────────────

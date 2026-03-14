@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Asystent Regulaminowy – PWr</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0d0f;
+    --surface:   #141418;
+    --surface2:  #1c1c22;
+    --border:    #2a2a32;
+    --accent:    #c8ff00;
+    --accent2:   #00d4ff;
+    --text:      #e8e8f0;
+    --muted:     #606070;
+    --user-bg:   #1e1e28;
+    --bot-bg:    #141418;
+    --danger:    #ff4444;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    color: #000;
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+
+  .header-text p {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 1px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-left: auto;
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+
+  /* ── chat area ── */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    scroll-behavior: smooth;
+  }
+
+  #chat::-webkit-scrollbar { width: 4px; }
+  #chat::-webkit-scrollbar-track { background: transparent; }
+  #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .message-wrap {
+    padding: 0 24px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.25s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── user message ── */
+  .msg-user {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .msg-user .bubble {
+    background: var(--user-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px 16px 4px 16px;
+    padding: 12px 16px;
+    max-width: 65%;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* ── bot message ── */
+  .msg-bot {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .bot-avatar {
+    width: 30px; height: 30px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .bot-content { flex: 1; min-width: 0; }
+
+  .bot-content .bubble {
+    background: var(--bot-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  /* ── source tag ── */
+  .source-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+  }
+
+  .source-tag .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .source-tag .dot.secondary { background: var(--accent2); }
+
+  .source-tag .title-text {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── similarity bar ── */
+  .sim-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .sim-label {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--muted);
+    flex-shrink: 0;
+    width: 80px;
+  }
+
+  .sim-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .sim-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    width: 0;
+  }
+
+  .sim-fill.secondary { background: var(--accent2); }
+
+  .sim-pct {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    width: 30px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .sim-pct.secondary { color: var(--accent2); }
+
+  /* ── typing indicator ── */
+  .typing-wrap {
+    padding: 0 24px;
+    margin-bottom: 20px;
+  }
+
+  .typing {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .typing .bot-avatar { margin-top: 0; }
+
+  .typing-dots {
+    display: flex;
+    gap: 5px;
+    padding: 14px 16px;
+    background: var(--bot-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px 16px 16px 16px;
+  }
+
+  .typing-dots span {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
+    40%            { opacity: 1;   transform: scale(1.3); }
+  }
+
+  /* ── welcome ── */
+  .welcome {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .welcome .big {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .welcome .big span { color: var(--accent); }
+
+  .welcome p {
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 360px;
+    margin: 0 auto 28px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .chip {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text);
+  }
+
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(200, 255, 0, 0.05);
+  }
+
+  /* ── input area ── */
+  footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  #input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    resize: none;
+    min-height: 46px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+
+  #input::placeholder { color: var(--muted); }
+
+  #input:focus { border-color: var(--accent); }
+
+  #btn {
+    width: 46px; height: 46px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  #btn:hover { background: #d8ff20; transform: scale(1.05); }
+  #btn:active { transform: scale(0.97); }
+  #btn:disabled { background: var(--border); cursor: not-allowed; transform: none; }
+
+  #btn svg { width: 18px; height: 18px; }
+
+    .odp-wstep   { font-weight: 600; margin-bottom: 8px; color: var(--accent); font-family: 'Syne', sans-serif; font-size: 13px; }
+  .odp-punkty  { padding-left: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .odp-punkty li { font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.6; }
+  .odp-zacheta { margin-top: 10px; font-size: 11px; color: var(--muted); font-style: italic; }
+  .btn-rozwin  { margin-top: 10px; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; font-family: 'JetBrains Mono', monospace; transition: all 0.15s; }
+  .btn-rozwin:hover { border-color: var(--accent); color: var(--accent); }
+  .pelna-tresc { margin-top: 10px; font-size: 11px; line-height: 1.7; color: var(--muted); border-left: 2px solid var(--border); padding-left: 12px; white-space: pre-wrap; }
+
+  .hint {
+
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PWr</div>
+  <div class="header-text">
+    <h1>Asystent Regulaminowy</h1>
+    <p>Politechnika Wrocławska · TF-IDF v2.0</p>
+  </div>
+  <div class="status-dot"></div>
+</header>
+
+<div id="chat">
+  <div class="welcome" id="welcome">
+    <div class="big">Zapytaj o <span>regulamin</span></div>
+    <p>Przeszukuję regulamin studiów PWr i zwracam właściwy paragraf wraz ze źródłem.</p>
+    <div class="chips">
+      <div class="chip" onclick="zadaj(this)">ile razy można podejść do egzaminu?</div>
+      <div class="chip" onclick="zadaj(this)">kiedy można wziąć urlop dziekański?</div>
+      <div class="chip" onclick="zadaj(this)">co grozi za nieobecności?</div>
+      <div class="chip" onclick="zadaj(this)">jak wznowić studia po skreśleniu?</div>
+      <div class="chip" onclick="zadaj(this)">jak oblicza się średnią ocen?</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="input-row">
+    <textarea id="input" placeholder="Zadaj pytanie o regulamin studiów…" rows="1"></textarea>
+    <button id="btn" onclick="wyslij()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+  <div class="hint">Enter – wyślij &nbsp;·&nbsp; Shift+Enter – nowa linia</div>
+</footer>
+
+<script>
+  const chatEl  = document.getElementById('chat');
+  const inputEl = document.getElementById('input');
+  const btnEl   = document.getElementById('btn');
+
+  // auto-resize textarea
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  });
+
+  // Enter wyślij, Shift+Enter nowa linia
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      wyslij();
+    }
+  });
+
+  function zadaj(chip) {
+    inputEl.value = chip.textContent;
+    wyslij();
+  }
+
+  function ukryjWitajke() {
+    const w = document.getElementById('welcome');
+    if (w) w.remove();
+  }
+
+  function dodajWiadomoscUzytkownika(tekst) {
+    ukryjWitajke();
+    const wrap = document.createElement('div');
+    wrap.className = 'message-wrap';
+    wrap.innerHTML = `
+      <div class="msg-user">
+        <div class="bubble">${escHtml(tekst)}</div>
+      </div>`;
+    chatEl.appendChild(wrap);
+    scrollDol();
+  }
+
+  function pokazTyping() {
+    const el = document.createElement('div');
+    el.className = 'typing-wrap';
+    el.id = 'typing';
+    el.innerHTML = `
+      <div class="typing">
+        <div class="bot-avatar">AI</div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>`;
+    chatEl.appendChild(el);
+    scrollDol();
+  }
+
+  function ukryjTyping() {
+    const el = document.getElementById('typing');
+    if (el) el.remove();
+  }
+
+    function renderujOdpowiedz(dane) {
+    // nowy format – słownik z punktami
+    if (dane.punkty) {
+      const punktyHtml = dane.punkty
+        .map(p => `<li>${escHtml(p)}</li>`)
+        .join('');
+      return `
+        <div class="odp-wstep">${escHtml(dane.wstep)}</div>
+        <ul class="odp-punkty">${punktyHtml}</ul>
+        ${dane.zacheta ? `<div class="odp-zacheta">💡 ${escHtml(dane.zacheta)}</div>` : ''}
+        ${dane.pelna_tresc ? `
+          <button class="btn-rozwin" onclick="rozwinTresc(this)">▼ pokaż pełny paragraf</button>
+          <div class="pelna-tresc" hidden>${escHtml(dane.pelna_tresc)}</div>
+        ` : ''}`;
+    }
+    // fallback stary format
+    return `<div>${escHtml(dane.odpowiedz || '')}</div>`;
+  }
+
+  function rozwinTresc(btn) {
+    const div = btn.nextElementSibling;
+    div.hidden = !div.hidden;
+    btn.textContent = div.hidden ? '▼ pokaż pełny paragraf' : '▲ zwiń';
+  }
+
+  function dodajOdpowiedzBota(dane) {
+
+
+
+    const wrap = document.createElement('div');
+    wrap.className = 'message-wrap';
+
+    const pct  = Math.round((dane.podobienstwo  || 0) * 100);
+    const pct2 = Math.round((dane.podobienstwo2 || 0) * 100);
+
+    let sourcesHtml = '';
+    if (dane.tytul) {
+      sourcesHtml += `
+        <div class="source-tag">
+          <span class="dot"></span>
+          <span class="title-text">${escHtml(dane.tytul)}</span>
+        </div>`;
+    }
+    if (dane.tytul2) {
+      sourcesHtml += `
+        <div class="source-tag">
+          <span class="dot secondary"></span>
+          <span class="title-text">${escHtml(dane.tytul2)}</span>
+        </div>`;
+    }
+
+    let barsHtml = '';
+    if (dane.tytul) {
+      barsHtml += `
+        <div class="sim-row">
+          <span class="sim-label">dopasowanie</span>
+          <div class="sim-track"><div class="sim-fill" data-pct="${pct}"></div></div>
+          <span class="sim-pct">${pct}%</span>
+        </div>`;
+    }
+    if (dane.tytul2) {
+      barsHtml += `
+        <div class="sim-row">
+          <span class="sim-label">powiązany</span>
+          <div class="sim-track"><div class="sim-fill secondary" data-pct="${pct2}"></div></div>
+          <span class="sim-pct secondary">${pct2}%</span>
+        </div>`;
+    }
+
+    wrap.innerHTML = `
+      <div class="msg-bot">
+        <div class="bot-avatar">AI</div>
+        <div class="bot-content">
+          <div class="bubble">${renderujOdpowiedz(dane)}</div>
+          ${sourcesHtml ? `<div class="source-row">${sourcesHtml}</div>` : ''}
+          ${barsHtml}
+        </div>
+      </div>`;
+
+    chatEl.appendChild(wrap);
+    scrollDol();
+
+    // animuj paski po renderze
+    requestAnimationFrame(() => {
+      wrap.querySelectorAll('.sim-fill').forEach(bar => {
+        const p = bar.dataset.pct;
+        setTimeout(() => { bar.style.width = p + '%'; }, 100);
+      });
+    });
+  }
+
+  async function wyslij() {
+    const tekst = inputEl.value.trim();
+    if (!tekst) return;
+
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    btnEl.disabled = true;
+
+    dodajWiadomoscUzytkownika(tekst);
+    pokazTyping();
+
+    try {
+      const res  = await fetch('/zapytaj', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ pytanie: tekst }),
+      });
+      const dane = await res.json();
+      ukryjTyping();
+      dodajOdpowiedzBota(dane);
+    } catch (err) {
+      ukryjTyping();
+      dodajOdpowiedzBota({
+        odpowiedz:   '⚠ Błąd połączenia z serwerem. Sprawdź czy app.py działa.',
+        tytul:       null,
+        podobienstwo: 0,
+      });
+    } finally {
+      btnEl.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  function scrollDol() {
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+</script>
+
+</body>
+</html>
