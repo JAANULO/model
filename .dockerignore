@@ -1,0 +1,11 @@
+ v1/
+**/__pycache__/
+**/*.pkl
+**/*.pyc
+.git/
+.gitignore
+README.md
+venv/
+.env
+.vscode/
+.idea/
