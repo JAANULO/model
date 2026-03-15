@@ -12,9 +12,15 @@ import os
 from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki
 app = Flask(__name__)
 
-PLIK_BAZY     = "data/baza_wiedzy.json"
-PLIK_LOG      = "logs/log.txt"
+BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+PLIK_BAZY     = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
+PLIK_LOG      = os.path.join(BASE_DIR, "logs", "log.txt")
 PROG_PEWNOSCI = 0.11
+
+logger = logging.getLogger("asystent")
+logger.setLevel(logging.INFO)
+logger.propagate = False  # nie przepuszczaj do root loggera
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 # ── ładowanie wyszukiwarki raz przy starcie ───────────────────────────────────
 wyszukiwarka = None
@@ -23,14 +29,19 @@ def zaladuj_wyszukiwarke():
     global wyszukiwarka
     if not os.path.exists(PLIK_BAZY):
         raise FileNotFoundError(f"Brak pliku '{PLIK_BAZY}'. Uruchom najpierw: python parser.py")
+
+    os.makedirs(os.path.dirname(PLIK_LOG), exist_ok=True)
+
+    if not logger.handlers:
+        fh = logging.FileHandler(PLIK_LOG, encoding="utf-8")
+        fh.setFormatter(logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        ))
+        logger.addHandler(fh)
+
     wyszukiwarka = Wyszukiwarka(PLIK_BAZY)
-    # konfiguracja loggingu
-    logging.basicConfig(
-        filename=PLIK_LOG,
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        encoding="utf-8"
-    )
+    logger.info("Wyszukiwarka zaladowana")
 
 # ── trasy ─────────────────────────────────────────────────────────────────────
 
@@ -43,8 +54,10 @@ def index():
 def zapytaj():
     dane    = request.get_json(force=True)
     pytanie = dane.get("pytanie", "").strip()
+    logger.info(f"PYTANIE: {pytanie}")
 
     if not pytanie:
+        logger.warning("Puste pytanie od klienta")
         return jsonify({"blad": "Puste pytanie"}), 400
 
     if wyszukiwarka is None:
@@ -88,17 +101,23 @@ def zapytaj():
             wynik2 = wyniki[1]
 
     if not wynik or wynik["podobienstwo"] < PROG_PEWNOSCI:
+        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}'")
         return jsonify({
-            "odpowiedz":    "Nie znalazłem informacji na ten temat w regulaminie. Spróbuj zapytać inaczej.",
-            "tytul":        None,
+            "odpowiedz": "Nie znalazłem informacji na ten temat w regulaminie. Spróbuj zapytać inaczej.",
+            "tytul": None,
             "podobienstwo": 0,
-            "tytul2":       None,
+            "tytul2": None,
         })
 
     odp = formatuj_odpowiedz(pytanie, wynik)
 
+
     inicjalizuj()
     pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"])
+
+    logger.info(
+        f"ODPOWIEDZ: pid={pid}, tytul='{wynik['tytul']}', podobienstwo={wynik['podobienstwo']:.4f}"
+    )
 
     if isinstance(odp, dict):
         return jsonify({
@@ -120,6 +139,7 @@ def zapytaj():
 def feedback():
     dane = request.get_json(force=True)
     zapisz_feedback(dane["pytanie_id"], dane["ocena"])
+    logger.info(f"FEEDBACK: pytanie_id={dane['pytanie_id']}, ocena={dane['ocena']}")
     return jsonify({"ok": True})
 
 
@@ -134,4 +154,4 @@ if __name__ == "__main__":
     print("Ładowanie bazy wiedzy...")
     zaladuj_wyszukiwarke()
     print("Serwer startuje → http://localhost:5000\n")
-    app.run(debug=False, host="0.0.0.0", port=5000)
+    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=5000)

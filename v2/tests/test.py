@@ -9,26 +9,82 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from core.wyszukiwarka import Wyszukiwarka
 
 TESTY = [
-    ("ile razy mozna podejsc do egzaminu",        "Egzamin"),
-    ("co zrobic jak nie zdam egzaminu",            "Egzamin"),
-    ("kiedy mozna wziac urlop dziekanski",         "Urlop"),
-    ("urlop zdrowotny jak dostac",                 "Urlop"),
-    ("kiedy mozna zostac skreslanym",              "Skreśl"),
-    ("jak wznowic studia po skreslanym",           "Wznow"),
-    ("jak oblicza sie srednia ocen",               "Skala ocen"),
-    ("jakie sa oceny w regulaminie",               "Skala ocen"),
-    ("co grozi za nieobecnosci", "Realizacja"),
-    ("ile nieobecnosci mozna miec", "Realizacja"),
-    ("jak wyglada praca dyplomowa",                "Dyplom"),
-    ("ile osob moze pisac wspolna prace",          "Dyplom"),
-    ("jak dlugo trwa semestr",                     "Organ"),
-    ("ile tygodni ma semestr",                     "Organ"),
-    ("co to jest powtarzanie przedmiotu",          "Powtarz"),
-    ("kiedy mozna powtarzac semestr",              "Powtarz"),
-    ("jak wyglada praktyka zawodowa",              "Praktyk"),
-    ("egzamni",                                    "Egzamin"),   # literówka
-    ("urlop?",                                     "Urlop"),     # krótkie
-    ("mam 3 nieobecnosci czy to duzo",             "Realizacja"),   # cyfra
+    # § 18 Egzaminy
+    ("ile razy mozna podejsc do egzaminu",          "Egzamin"),
+    ("co zrobic jak nie zdam egzaminu",             "Egzamin"),
+    ("czy moge zdawac egzamin przed sesja",         "Egzamin"),
+    ("ile dni miedzy pierwszym a drugim terminem",  "Egzamin"),
+    ("kto moze uniewaznic egzamin",                 "Egzamin"),
+    ("czy moge poprawic egzamin",                   "Egzamin"),
+    ("kiedy jest poprawka egzaminu",                "Egzamin"),
+    ("egzamni",                                     "Egzamin"),   # literówka
+
+    # § 20 Egzamin komisyjny
+    ("co to jest egzamin komisyjny",                "komisyjny"),
+    ("ile mam czasu na wniosek komisyjny",          "komisyjny"),
+    ("kto jest w komisji egzaminacyjnej",           "komisyjny"),
+    ("czy moge miec obserwatora na egzaminie",      "komisyjny"),
+
+    # § 16 Realizacja zajęć / nieobecności
+    ("co grozi za nieobecnosci",                    "Realizacja"),
+    ("ile nieobecnosci mozna miec",                 "Realizacja"),
+    ("mam 3 nieobecnosci czy to duzo",              "Realizacja"),
+    ("jak usprawiedliwic nieobecnosc",              "Realizacja"),
+    ("kto ustala limit nieobecnosci",               "Realizacja"),
+
+    # § 19 Skala ocen
+    ("jakie sa oceny w regulaminie",                "Skala"),
+    ("ile procent na piatke",                       "Skala"),
+    ("ile procent na czworke",                      "Skala"),
+    ("ile procent na trojke",                       "Skala"),
+    ("ile procent na cztery i pol",                 "Skala"),
+    ("jaka jest najnizsza ocena zaliczajaca",       "Skala"),
+
+    # § 27 Urlopy
+    ("kiedy mozna wziac urlop dziekanski",          "Urlop"),
+    ("urlop zdrowotny jak dostac",                  "Urlop"),
+    ("czy moge wziac urlop bo jestem w ciazy",      "Urlop"),
+    ("ile urlopow dziekanskich moge wziac",         "Urlop"),
+    ("czy podczas urlopu mam prawa studenta",       "Urlop"),
+    ("urlop?",                                      "Urlop"),     # krótkie
+
+    # § 33 Skreślenia
+    ("kiedy mozna zostac skreslanym",               "Skreśl"),
+    ("jak zlozyc rezygnacje ze studiow",            "Skreśl"),
+    ("co grozi za niezapisanie sie na zajecia",     "Skreśl"),
+
+    # § 34 Wznowienia
+    ("jak wznowic studia po skreslanym",            "Wznow"),
+    ("ile razy mozna wznowic studia",               "Wznow"),
+    ("ile mam czasu na wznowienie studiow",         "Wznow"),
+    ("jak wznowic studia",                          "Wznow"),
+
+    # § 22 Powtarzanie przedmiotu
+    ("co to jest powtarzanie przedmiotu",           "Powtarz"),
+    ("ile razy mozna powtarzac przedmiot",          "Powtarz"),
+    ("czy powtarzanie jest platne",                 "Powtarz"),
+    ("kiedy mozna powtarzac semestr",               "Powtarz"),
+
+    # § 35 Praca dyplomowa
+    ("jak wyglada praca dyplomowa",                 "Dyplom"),
+    ("ile osob moze pisac wspolna prace",           "Dyplom"),
+    ("czy praca jest sprawdzana antyplagiatem",     "Dyplom"),
+    ("w jakim jezyku pisze sie prace dyplomowa",    "Dyplom"),
+    ("kto to jest promotor",                        "Dyplom"),
+
+    # § 11 Organizacja roku
+    ("jak dlugo trwa semestr",                      "Organ"),
+    ("ile tygodni ma semestr",                      "Organ"),
+    ("kiedy konczy sie sesja letnia",               "Organ"),
+    ("ile dni trwa sesja egzaminacyjna",            "Organ"),
+
+    # § 38 Oceny za studia
+    ("jak oblicza sie srednia ocen",                "Skala ocen"),
+    ("kiedy dostane wyróznienie",                   "Oceny za"),
+
+    # § 23 Praktyki
+    ("jak wyglada praktyka zawodowa",               "Praktyk"),
+    ("czy moge zaliczyc praktyke bez odbywania",    "Praktyk"),
 ]
 
 def main():

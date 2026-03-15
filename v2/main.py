@@ -45,14 +45,14 @@ from shared.tokenizer   import Tokenizer
 # USTAWIENIA
 # ============================================================
 
-PLIK_DANYCH  = "dane.json"
+PLIK_DANYCH  = "data/dane.json"
 PLIK_CACHE   = "model_cache.pkl"
-PLIK_BAZY    = "baza_wiedzy.json"
+PLIK_BAZY    = "data/baza_wiedzy.json"
 PLIK_DB      = "asystent.db"
-WYMIAR       = 256
-N_WARSTW     = 6
-N_GLOWIC     = 8
-DROPOUT      = 0.05
+WYMIAR       = 128
+N_WARSTW     = 4
+N_GLOWIC     = 4
+DROPOUT      = 0.01
 EPOKI        = 5000
 LR           = 0.001
 MAKS_DLUGOSC = 512    # zwiększony – fragment regulaminu to ~400 znaków
@@ -341,27 +341,7 @@ def szukaj_z_rerankingiem(wyszukiwarka, pytanie, n_wynikow=1):
     if not wyniki:
         return []
 
-    # próba rerankingu przez własny model embeddingowy
-    try:
-        from embedder import wczytaj_model, tokenizuj as tok_emb
-        embedder, slownik_emb = wczytaj_model()
-
-        ids_pyt = slownik_emb.koduj(tok_emb(pytanie))
-        vec_pyt = embedder.embed(ids_pyt)
-
-        reranked = []
-        for wynik in wyniki:
-            ids_par = slownik_emb.koduj(tok_emb(wynik["tresc"][:300]))
-            vec_par = embedder.embed(ids_par)
-            sim     = embedder.podobienstwo(vec_pyt, vec_par)
-            reranked.append((sim, wynik))
-
-        reranked.sort(key=lambda x: x[0], reverse=True)
-        return [w for _, w in reranked[:n_wynikow]]
-
-    except Exception:
-        # embedder niedostępny lub błąd → zwróć wyniki samego BM25
-        return wyniki[:n_wynikow]
+    return wyniki[:n_wynikow]
 
 # ============================================================
 # GENEROWANIE ODPOWIEDZI
@@ -518,15 +498,10 @@ if __name__ == "__main__":
     # 4. załaduj wyszukiwarkę (BM25 + opcjonalny reranking)
     print()
     if os.path.exists(PLIK_BAZY):
-        from wyszukiwarka import Wyszukiwarka
+        from core.wyszukiwarka import Wyszukiwarka
         wyszukiwarka = Wyszukiwarka(PLIK_BAZY)
         # sprawdź czy embedder jest dostępny
-        try:
-            from embedder import wczytaj_model as _wm
-            _wm()
-            print("  🔍 Reranking przez embeddingi: aktywny")
-        except Exception:
-            print("  🔍 Reranking przez embeddingi: brak (uruchom: python embedder.py)")
+        print("  Reranking przez embeddingi: brak")
     else:
         print(f"⚠️  Nie znaleziono '{PLIK_BAZY}' – uruchom najpierw parser.py")
         print("   Model będzie odpowiadał bez kontekstu regulaminu.\n")

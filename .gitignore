@@ -13,6 +13,7 @@ __pycache__/
 # Środowisko wirtualne
 venv/
 .env
+v2/.env
 
 # IDE
 .vscode/

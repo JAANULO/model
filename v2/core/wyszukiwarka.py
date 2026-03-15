@@ -7,9 +7,9 @@ Wyszukuje w bazie wiedzy fragment najbardziej pasujacy do pytania.
 import json
 import math
 import re
+import os
 
-
-PLIK_BAZY = "baza_wiedzy.json"
+PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 
 
 # ── Krok 1: przygotowanie tekstu ──────────────────────────────────────────────
@@ -28,6 +28,8 @@ SYNONIMY = {
     # odmiany
     "egzaminu":   "egzamin", "egzaminie":  "egzamin", "egzaminow":   "egzamin",
     "egzaminy":   "egzamin", "egzaminami": "egzamin",
+    "egzaminacyjnej": "komisja",
+    "egzaminacyjny": "komisja",
     # kolokwializmy i synonimy
     "zdac":       "egzamin", "zdawac":     "egzamin", "oblac":        "egzamin",
     "oblejesz":   "egzamin", "oblales":    "egzamin", "zdales":       "egzamin",
@@ -70,6 +72,12 @@ SYNONIMY = {
     "exmatrykulacja":"skreslenie",
     "wyrzucenie":   "skreslenie", "wyrzucony":    "skreslenie",
     "rzucic":       "skreslenie", "rzucam":       "skreslenie",
+    "niezapisanie": "skreslenie",  # "co grozi za niezapisanie się"
+    "niezapisanym": "skreslenie",
+    "niepodjecie": "skreslenie",  # nie podjęcie studiów
+    "niepodjecia": "skreslenie",
+    "niezapisania": "skreslenie",
+    "niezlozenia": "skreslenie",
 
     # ── wznowienie ────────────────────────────────────────────────────────────
     "wznowic":      "wznowienie", "wznowienia":   "wznowienie",
@@ -147,12 +155,16 @@ SYNONIMY = {
     "elastyczny":       "indywidualny", "dostosowanie":     "indywidualny",
 
     # ── egzamin komisyjny ─────────────────────────────────────────────────────
-    "komisyjny":    "komisja", "komisyjnego":  "komisja",
-    "komisje":      "komisja", "komisji":      "komisja",
-    "odwolanie":    "komisja", "odwolac":      "komisja",
-    "kwestionowac": "komisja", "protest":      "komisja",
-    "skarga":       "komisja", "skarzyc":      "komisja",
-    "podwazyc":     "komisja", "zakwestionowac":"komisja",
+    "komisyjny":    "komisyjny", "komisyjnego":  "komisyjny",
+    "komisje":      "komisyjny", "komisji":      "komisyjny",
+    "odwolanie":    "komisyjny", "odwolac":      "komisyjny",
+    "kwestionowac": "komisyjny", "protest":      "komisyjny",
+    "skarga":       "komisyjny", "skarzyc":      "komisyjny",
+    "podwazyc":     "komisyjny", "zakwestionowac":"komisyjny",
+    "obserwator":   "komisyjny",
+    "obserwatora":  "komisyjny",
+    "obserwatorem": "komisyjny",
+    "wniosek":      "komisyjny",
 
     # ── ECTS / punkty ─────────────────────────────────────────────────────────
     "ects":       "punkty", "kredyty":    "punkty",
@@ -166,19 +178,42 @@ SYNONIMY = {
     "rektora":      "stypendium", "naukowe":       "stypendium",
 
     # ── dziekanat / administracja ─────────────────────────────────────────────
-    "dziekanat":    "dziekan", "dziekanatu":   "dziekan",
-    "dziekana":     "dziekan", "dziekanem":    "dziekan",
-    "prodziekan":   "dziekan", "prodziekana":  "dziekan",
-    "wniosek":      "dziekan", "wniosku":      "dziekan", "wnioski": "dziekan",
-    "podanie":      "dziekan", "podania":      "dziekan",
-    "zgoda":        "dziekan", "zgody":        "dziekan",
-    "decyzja":      "dziekan", "decyzji":      "dziekan",
+    "dziekanat": "dziekan", "dziekanatu": "dziekan",
+    "dziekana": "dziekan", "dziekanem": "dziekan",
+    "prodziekan": "dziekan", "prodziekana": "dziekan",
+    "wniosku": "dziekan", "wnioski": "dziekan",
+    "podanie": "dziekan", "podania": "dziekan",
+    "zgoda": "dziekan", "zgody": "dziekan",
+    "decyzja": "dziekan", "decyzji": "dziekan",
+    # ── poprawki ──────────────────────────────────────────────────────────────
+    #"egzamin komisyjny": "komisja komisyjny kwestionuje wniosek dziekan prodziekan przewodniczy obserwator trzech osob",
+    #"obserwatora na egzaminie": "egzamin komisyjny komisja obserwator dziekan prodziekan przewodniczy",
+    #"obserwatora": "komisja komisyjny obserwator dziekan prodziekan",
+    "dni": "egzamin",
+    "terminem": "egzamin",
+
 }
 
 ROZSZERZENIA_ZAPYTAN = {
-    "egzamin":     "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
-    "egzaminu":    "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
-    "egzamni":     "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
+    "egzamin": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
+    "egzaminu": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
+    "egzamni": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
+    "komisyjny": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
+    "komisji": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
+    "obserwator": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
+    "procent": "skala ocen bardzo dobry dostateczny niedostateczny procent stopień opanowania",
+    "piatke": "skala bardzo dobry piec dziewiecdziesiat sto procent stopień",
+    "czworke": "skala dobry cztery siedemdziesiat siedemdziesiat dziewiec procent stopień",
+    "trojke": "skala dostateczny trzy piecdziesiat piecdziesiat dziewiec procent stopień",
+    "cztery i pol": "skala dobry plus cztery piec osiemdziesiat osiemdziesiat dziewiec procent",
+    "rezygnacje": "skreśla rektor rezygnacji pisemne oświadczenie lista studentów",
+    "rezygnacja": "skreśla rektor rezygnacji pisemne oświadczenie lista studentów",
+    "niezapisanie": "skreśla rektor niepodjecia lista studentów zapisy rejestracja",
+    "sesja letnia": "lipiec sesja egzaminacyjna konczy pietnastu tygodni kalendarz",
+    "konczy sesja": "lipiec sesja egzaminacyjna konczy pietnastu tygodni kalendarz",
+    "ile dni": "pieciodniowym odstepem drugi termin egzaminu",
+    "urlop dziekanski": "urlop dziekanski dwoch etapow nieprzekraczajacym calym toku",
+    "ile urlopow": "urlop dziekanski dwoch etapow nieprzekraczajacym calym toku",
     "zdac":        "dwukrotnego egzaminatorem terminie sesji",
     "zdawac":      "dwukrotnego egzaminatorem terminie sesji",
     "oblac":       "dwukrotnego egzaminatorem terminie sesji",
@@ -208,6 +243,12 @@ ROZSZERZENIA_ZAPYTAN = {
     "semestru": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
     "dlugo": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
     "trwa": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
+    "komisja": "komisyjny kwestionuje sposob warunki zakres wniosek egzaminatora",
+    "komisji egzaminacyjnej": "egzamin komisyjny dziekan prodziekan trzech osob obserwator",
+    "komisyjny": "egzamin komisyjny kwestionuje ocene sposob warunki zakres wniosek dziekan prodziekan przewodniczacy komisji trzech osob obserwator",
+    "obserwatora na egzaminie": "egzamin komisyjny obserwator komisja dziekan prodziekan",
+    "egzamin komisyjny": "komisyjny wniosek kwestionuje ocene dziekan prodziekan komisja obserwator",
+
 }
 
 
