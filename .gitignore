@@ -23,7 +23,6 @@ venv/
 Thumbs.db
 
 # Dane generowane automatycznie (v2)
-v2/data/baza_wiedzy.json
 v2/data/baza_wiedzy_cache.pkl
 v2/logs/
 log.txt
