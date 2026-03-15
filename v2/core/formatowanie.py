@@ -167,9 +167,9 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
         "urlop":      ["urlop zdrowotny", "urlop dziekański", "udziela"],
     }
 
+    zdania = None
     if 'Skala ocen' in tytul or 'skala ocen' in tytul:
-        punkty = wyciagnij_skale_ocen(tresc)
-
+        zdania = [wyciagnij_skale_ocen(tresc)]
     else:
         slowa = None
         for fraza, kluczowe in SLOWA_KLUCZOWE.items():
@@ -177,21 +177,7 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
                 slowa = kluczowe
                 break
         zdania = wyciagnij_zdania(tresc, max_zdan=3, szukaj=slowa)
-        if zdania:
-            punkty = "\n".join(f"  • {z}." for z in zdania)
-        else:
-            punkty = f"  • {tresc[:300]}..."
 
-
-    # złóż odpowiedź
-    #odpowiedz  = wstep
-    #odpowiedz += punkty
-    #odpowiedz += f"\n\n📖 Źródło: {tytul}"
-
-    #if podobienstwo > 0.2:
-        #odpowiedz += f"\n💡 {random.choice(ZACHETY)}"
-
-    #return odpowiedz
     zacheta = random.choice(ZACHETY) if podobienstwo > 0.2 else None
 
     return {

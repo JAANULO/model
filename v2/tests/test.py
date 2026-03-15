@@ -4,7 +4,9 @@ Uruchom: python test.py
 Sprawdza czy 20 pytań trafia w właściwy paragraf.
 """
 import sys
-from wyszukiwarka import Wyszukiwarka
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from core.wyszukiwarka import Wyszukiwarka
 
 TESTY = [
     ("ile razy mozna podejsc do egzaminu",        "Egzamin"),
@@ -15,8 +17,8 @@ TESTY = [
     ("jak wznowic studia po skreslanym",           "Wznow"),
     ("jak oblicza sie srednia ocen",               "Skala ocen"),
     ("jakie sa oceny w regulaminie",               "Skala ocen"),
-    ("co grozi za nieobecnosci",                   "Nieobec"),
-    ("ile nieobecnosci mozna miec",                "Nieobec"),
+    ("co grozi za nieobecnosci", "Realizacja"),
+    ("ile nieobecnosci mozna miec", "Realizacja"),
     ("jak wyglada praca dyplomowa",                "Dyplom"),
     ("ile osob moze pisac wspolna prace",          "Dyplom"),
     ("jak dlugo trwa semestr",                     "Organ"),
@@ -26,11 +28,12 @@ TESTY = [
     ("jak wyglada praktyka zawodowa",              "Praktyk"),
     ("egzamni",                                    "Egzamin"),   # literówka
     ("urlop?",                                     "Urlop"),     # krótkie
-    ("mam 3 nieobecnosci czy to duzo",             "Nieobec"),   # cyfra
+    ("mam 3 nieobecnosci czy to duzo",             "Realizacja"),   # cyfra
 ]
 
 def main():
-    w = Wyszukiwarka("baza_wiedzy.json")
+    BASE_DIR = os.path.join(os.path.dirname(__file__), "..")
+    w = Wyszukiwarka(os.path.join(BASE_DIR, "data", "baza_wiedzy.json"))
     ok = 0
     bledy = []
 

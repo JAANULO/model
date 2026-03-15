@@ -8,8 +8,10 @@ import json
 import re
 import os
 
-PLIK_PDF = "regulamin.pdf"
-PLIK_WYJSCIOWY = "baza_wiedzy.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+PLIK_PDF = os.path.join(DATA_DIR, "regulamin.pdf")
+PLIK_WYJSCIOWY = os.path.join(DATA_DIR, "baza_wiedzy.json")
 
 
 def wczytaj_pdf(sciezka):

@@ -12,11 +12,14 @@ from core.wyszukiwarka import Wyszukiwarka
 from core.formatowanie import formatuj_odpowiedz
 
 
-PLIK_BAZY     = "baza_wiedzy.json"
-PLIK_LOG      = "log.txt"
+BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
+PLIK_BAZY = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
+PLIK_LOG  = os.path.join(BASE_DIR, "logs", "log.txt")
 PROG_PEWNOSCI = 0.11
 
-# konfiguracja logowania – zapisuje do pliku i wyświetla błędy w konsoli
+os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+
+# konfiguracja logowania
 logging.basicConfig(
     filename=PLIK_LOG,
     level=logging.INFO,
@@ -183,7 +186,7 @@ def main():
 
             # krótkie pytania (1-2 słowa) – rozszerz o kontekst ze słownika synonimów
             if len(pytanie.split()) <= 2:
-                from wyszukiwarka import SYNONIMY
+                from core.wyszukiwarka import SYNONIMY
                 slowo_bazowe = pytanie.strip().lower().rstrip('?!')
                 pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]
                 if pasujace:

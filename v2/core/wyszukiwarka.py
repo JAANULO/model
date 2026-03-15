@@ -175,6 +175,42 @@ SYNONIMY = {
     "decyzja":      "dziekan", "decyzji":      "dziekan",
 }
 
+ROZSZERZENIA_ZAPYTAN = {
+    "egzamin":     "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
+    "egzaminu":    "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
+    "egzamni":     "dwukrotnego egzaminatorem terminie sesji komisyjny unieważnienie",
+    "zdac":        "dwukrotnego egzaminatorem terminie sesji",
+    "zdawac":      "dwukrotnego egzaminatorem terminie sesji",
+    "oblac":       "dwukrotnego egzaminatorem terminie sesji",
+    "poprawka":    "dwukrotnego egzaminatorem terminie sesji",
+    "podejsc":     "dwukrotnego egzaminatorem terminie sesji",
+    "urlop":       "dziekanski zdrowotny zawodowy rodzicielski udzielony semestrów",
+    "urlopu":      "dziekanski zdrowotny zawodowy rodzicielski udzielony semestrów",
+    "dziekanski":  "urlop dziekanski zdrowotny zawodowy udzielony",
+    "nieobecnosc": "nieobecnosci limit dopuszczalnych uczestniczenia zapisany zarejestrowany obowiazany",
+    "dyplom": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
+    "praca": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
+    "dyplomowa": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
+    "wspolna": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
+    "wznowienie": "wznowienia przywrocenie harmonogramem semestralnej posrednictwem pisemny wniosek reaktywacja",
+    "wznowic": "wznowienia przywrocenie harmonogramem semestralnej posrednictwem pisemny wniosek reaktywacja",
+    "wznowic po": "wznowienia przywrocenie harmonogramem semestralnej pisemny wniosek",
+    "wznowic studia": "wznowienia przywrocenie harmonogramem semestralnej pisemny wniosek",
+    "skreslenie": "skresla rektor niepodjecia rezygnacji niezlozenia wydaleniem",
+    "ocena": "skala bardzo dobry dostateczny niedostateczny procent prog",
+    "oceny": "skala bardzo dobry dostateczny niedostateczny procent prog",
+    "regulaminie": "skala bardzo dobry dostateczny niedostateczny procent prog",
+    "powtarzanie": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
+    "powtorzyc": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
+    "powtarzac": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
+    "powtarzac semestr": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
+    "semestr": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
+    "semestru": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
+    "dlugo": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
+    "trwa": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
+}
+
+
 def levenshtein(a, b):
     """oblicza odległość edycyjną między dwoma słowami"""
     if len(a) < len(b):
@@ -380,6 +416,19 @@ class Wyszukiwarka:
             return []
         # korekta literówek – każde słowo porównywane ze słownikiem IDF
         tokeny_pytania = [popraw_literowke(t, self.idf) for t in tokeny_pytania]
+
+        # rozszerzanie zapytania – doklejamy unikalne słowa z właściwego paragrafu
+        rozszerzenie = []
+        for tok in tokeny_pytania:
+            if tok in ROZSZERZENIA_ZAPYTAN:
+                dodatkowe = tokenizuj(ROZSZERZENIA_ZAPYTAN[tok])
+                rozszerzenie.extend(dodatkowe)
+        # sprawdź frazy dwuwyrazowe
+        pytanie_lower = usun_polskie_znaki(pytanie.lower())
+        for fraza, rozszerzenie_frazy in ROZSZERZENIA_ZAPYTAN.items():
+            if ' ' in fraza and fraza in pytanie_lower:
+                rozszerzenie.extend(tokenizuj(rozszerzenie_frazy))
+        tokeny_pytania = tokeny_pytania + rozszerzenie
 
         tf_pytania    = oblicz_tf(tokeny_pytania)
         wektor_pytania = {

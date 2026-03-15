@@ -9,12 +9,11 @@ from core.wyszukiwarka import Wyszukiwarka
 from core.formatowanie import formatuj_odpowiedz
 import logging
 import os
-from db import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki, inicjalizuj()
-
+from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki
 app = Flask(__name__)
 
-PLIK_BAZY     = "baza_wiedzy.json"
-PLIK_LOG      = "log.txt"
+PLIK_BAZY     = "data/baza_wiedzy.json"
+PLIK_LOG      = "logs/log.txt"
 PROG_PEWNOSCI = 0.11
 
 # ── ładowanie wyszukiwarki raz przy starcie ───────────────────────────────────
@@ -72,7 +71,7 @@ def zapytaj():
 
     # rozszerzenie krótkich pytań
     if len(pytanie.split()) <= 2:
-        from wyszukiwarka import SYNONIMY
+        from core.wyszukiwarka import SYNONIMY
         slowo_bazowe = pytanie.strip().lower().rstrip("?!")
         pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]
         if pasujace:
@@ -98,7 +97,8 @@ def zapytaj():
 
     odp = formatuj_odpowiedz(pytanie, wynik)
 
-    pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"], baza)
+    inicjalizuj()
+    pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"])
 
     if isinstance(odp, dict):
         return jsonify({
