@@ -1,7 +1,10 @@
-import pdfplumber, re
+import pdfplumber, re, os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PLIK_PDF = os.path.join(BASE_DIR, "..", "data", "regulamin.pdf")
 
 t = ''
-with pdfplumber.open('regulamin.pdf') as pdf:
+with pdfplumber.open(PLIK_PDF) as pdf:
     for i, s in enumerate(pdf.pages):
         if i < 2:
             continue

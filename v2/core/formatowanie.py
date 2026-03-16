@@ -193,11 +193,12 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
 # ── test ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import sys
-    sys.path.insert(0, '.')
-    from wyszukiwarka import Wyszukiwarka
+    import sys, os
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(BASE_DIR, ".."))
+    from core.wyszukiwarka import Wyszukiwarka
 
-    w = Wyszukiwarka("baza_wiedzy.json")
+    w = Wyszukiwarka(os.path.join(BASE_DIR, "..", "data", "baza_wiedzy.json"))
 
     pytania = [
         "co mam zrobić jak nie zdam egzaminu",

@@ -45,10 +45,11 @@ from shared.tokenizer   import Tokenizer
 # USTAWIENIA
 # ============================================================
 
-PLIK_DANYCH  = "data/dane.json"
-PLIK_CACHE   = "model_cache.pkl"
-PLIK_BAZY    = "data/baza_wiedzy.json"
-PLIK_DB      = "asystent.db"
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+PLIK_DANYCH  = os.path.join(BASE_DIR, "data", "dane.json")
+PLIK_CACHE   = os.path.join(BASE_DIR, "model_cache.pkl")
+PLIK_BAZY    = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
+PLIK_DB      = os.path.join(BASE_DIR, "asystent.db")
 WYMIAR       = 128
 N_WARSTW     = 4
 N_GLOWIC     = 4
@@ -59,36 +60,8 @@ MAKS_DLUGOSC = 512    # zwiększony – fragment regulaminu to ~400 znaków
 BATCH_SIZE   = 32
 PROG_PEWNOSCI = 0.05   # minimalny wynik BM25 żeby użyć kontekstu
 
-# rozszerzenia zapytań – gdy pytanie zawiera frazę, dodaj słowa kluczowe
-# zwiększa trafność BM25 szczególnie dla krótkich pytań
-ROZSZERZENIA = {
-    "wznow":        "wznowienie studiów przywrócenie praw studenta",
-    "skresla":      "skreślenie lista studentów rezygnacja",
-    "ile tygodni":  "tygodnie semestr zajęcia kalendarz",
-    "tygodni":      "tygodnie semestr zajęcia kalendarz",
-    "jak dlugo":    "tygodnie semestr czas trwania",
-    "podejsc":      "egzamin termin dwukrotnie składanie",
-    "podchodzic":   "egzamin termin dwukrotnie składanie",
-    "drugi raz":    "egzamin termin dwukrotnie składanie",
-    "poprawka":     "egzamin termin dwukrotnie składanie",
-    "komisyjny":    "egzamin komisja kwestionowanie oceny",
-    "warunek":      "zaliczenie warunkowe powtarzanie przedmiotu",
-    "obleje":       "egzamin niezdany termin poprawkowy",
-    "nie zdam":     "egzamin niezdany termin poprawkowy",
-    "przerwa":      "urlop dziekański semestr zawieszenie",
-    "ciaza":        "urlop zdrowotny rodzicielski ciąża",
-    "rzucic":       "skreślenie rezygnacja lista studentów",
-    "rezygnacja":   "skreślenie rezygnacja lista studentów",
-    "promotor":     "praca dyplomowa promotor opiekun",
-    "antyplagiat":  "praca dyplomowa plagiat antyplagiat",
-    "obron":        "praca dyplomowa obrona egzamin dyplomowy",
-    "choroba":      "nieobecność usprawiedliwienie zwolnienie",
-    "l4":           "nieobecność usprawiedliwienie zwolnienie lekarskie",
-    "stypendium":   "stypendium socjalne naukowe rektora",
-    "wniosek":      "dziekan podanie wniosek zgoda",
-    "ios":          "indywidualna organizacja studiów plan",
-    "ects":         "punkty kredyty zaliczenie przedmiot",
-}
+# Pobieramy rozszerzenia z centralnego słownika
+from core.slowniki import ROZSZERZENIA
 
 # ============================================================
 # SQLITE – logi, statystyki, feedback
@@ -316,8 +289,9 @@ def rozszerz_pytanie(pytanie):
     # dla bardzo krótkich pytań (1-2 słowa) dodaj wszystkie pasujące synonimy
     if len(pytanie.split()) <= 2:
         try:
-            from wyszukiwarka import SYNONIMY
+            from core.slowniki import SYNONIMY
             slowo = pytanie.strip().lower().rstrip("?!")
+
             pasujace = list({v for k, v in SYNONIMY.items() if slowo in k})
             if pasujace:
                 return pytanie + " " + " ".join(pasujace)
@@ -381,13 +355,17 @@ def generuj_odpowiedz(pytanie, historia, temperatura, wyszukiwarka, model, token
 
     with torch.no_grad():
         for _ in range(200):
-            logits   = model.forward(ids[-MAKS_DLUGOSC:])
-            ostatnie = logits[-1].cpu().numpy() / max(temperatura, 0.01)
-            probs    = softmax(ostatnie)
-            nastepny = int(
-                np.argmax(probs) if temperatura < 0.05
-                else np.random.choice(len(probs), p=probs)
-            )
+            logits = model.forward(ids[-MAKS_DLUGOSC:])
+            ostatnie = logits[-1] / max(temperatura, 0.01)
+
+            # używamy natywnych funkcji Torch zamiast CPU + Numpy
+            probs = torch.softmax(ostatnie, dim=-1)
+
+            if temperatura < 0.05:
+                nastepny = torch.argmax(probs).item()
+            else:
+                nastepny = torch.multinomial(probs, num_samples=1).item()
+
             ids.append(nastepny)
             if "koniec" in tokenizer.dekoduj(ids)[-10:]:
                 break

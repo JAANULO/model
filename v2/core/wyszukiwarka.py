@@ -8,6 +8,10 @@ import json
 import math
 import re
 import os
+try:
+    from .slowniki import SYNONIMY, ROZSZERZENIA  # uruchomienie jako pakiet
+except ImportError:
+    from slowniki import SYNONIMY, ROZSZERZENIA   # uruchomienie pliku bezpośrednio
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 
@@ -21,236 +25,6 @@ def usun_polskie_znaki(tekst):
         'acelnoszzACELNOSZZ'
     )
     return tekst.translate(zamiana)
-
-SYNONIMY = {
-
-    # ── egzamin ───────────────────────────────────────────────────────────────
-    # odmiany
-    "egzaminu":   "egzamin", "egzaminie":  "egzamin", "egzaminow":   "egzamin",
-    "egzaminy":   "egzamin", "egzaminami": "egzamin",
-    "egzaminacyjnej": "komisja",
-    "egzaminacyjny": "komisja",
-    # kolokwializmy i synonimy
-    "zdac":       "egzamin", "zdawac":     "egzamin", "oblac":        "egzamin",
-    "oblejesz":   "egzamin", "oblales":    "egzamin", "zdales":       "egzamin",
-    "poprawka":   "egzamin", "poprawke":   "egzamin", "poprawki":     "egzamin",
-    "kolokwium":  "egzamin", "kolos":      "egzamin", "kolosa":       "egzamin",
-    "test":       "egzamin", "testy":      "egzamin", "testow":       "egzamin",
-    "sprawdzian": "egzamin", "sprawdzianu":"egzamin",
-    "sesja":      "egzamin", "sesji":      "egzamin", "sesje":        "egzamin",
-    "termin":     "egzamin", "terminu":    "egzamin", "terminy":      "egzamin",
-    "podejsc":    "egzamin", "podejde":    "egzamin", "podchodze":    "egzamin",
-
-    # ── zaliczenie ────────────────────────────────────────────────────────────
-    "zaliczenia":  "zaliczenie", "zaliczeniu":  "zaliczenie",
-    "zaliczen":    "zaliczenie", "zaliczeniowy":"zaliczenie",
-    "zaliczyc":    "zaliczenie", "zaliczylem":  "zaliczenie",
-    "niezaliczony":"zaliczenie", "niezaliczone":"zaliczenie",
-    "warunek":     "zaliczenie", "warunkowe":   "zaliczenie", "warunku": "zaliczenie",
-
-    # ── urlop ─────────────────────────────────────────────────────────────────
-    "urlopu":       "urlop", "urlopie":      "urlop", "urlopy":       "urlop",
-    "dziekanski":   "urlop", "dziekanskiego":"urlop", "dziekanskim":  "urlop",
-    "zdrowotny":    "urlop", "zdrowotnego":  "urlop", "zdrowotnym":   "urlop",
-    "zawodowy":     "urlop", "zawodowego":   "urlop",
-    "rodzicielski": "urlop", "rodzicielskiego":"urlop",
-    "przerwa":      "urlop", "przerwy":      "urlop", "przerwe":      "urlop",
-    "zawieszenie":  "urlop", "wstrzymanie":  "urlop",
-    "wolne":        "urlop", "wolnego":      "urlop",
-    "ciaza":        "urlop", "ciazy":        "urlop", "ciaze":        "urlop",
-    "macierzynski": "urlop", "macierzynskiego":"urlop",
-
-    # ── skreślenie ────────────────────────────────────────────────────────────
-    "skreslic":     "skreslenie", "skreslanego":  "skreslenie",
-    "skreslanym":   "skreslenie", "skreslonego":  "skreslenie",
-    "skreslon":     "skreslenie", "skreslonej":   "skreslenie",
-    "wydalenie":    "skreslenie", "wydalic":      "skreslenie",
-    "wydalono":     "skreslenie", "wydalony":     "skreslenie",
-    "usuniecie":    "skreslenie", "usuniety":     "skreslenie",
-    "rezygnacja":   "skreslenie", "rezygnacji":   "skreslenie",
-    "rezygnowac":   "skreslenie", "odejsc":       "skreslenie",
-    "exmatrykulacja":"skreslenie",
-    "wyrzucenie":   "skreslenie", "wyrzucony":    "skreslenie",
-    "rzucic":       "skreslenie", "rzucam":       "skreslenie",
-    "niezapisanie": "skreslenie",  # "co grozi za niezapisanie się"
-    "niezapisanym": "skreslenie",
-    "niepodjecie": "skreslenie",  # nie podjęcie studiów
-    "niepodjecia": "skreslenie",
-    "niezapisania": "skreslenie",
-    "niezlozenia": "skreslenie",
-
-    # ── wznowienie ────────────────────────────────────────────────────────────
-    "wznowic":      "wznowienie", "wznowienia":   "wznowienie",
-    "wznowieniu":   "wznowienie", "wznowil":      "wznowienie",
-    "przywrocic":   "wznowienie", "przywrocenie": "wznowienie",
-    "wrocic":       "wznowienie", "wracac":       "wznowienie",
-    "powrot":       "wznowienie", "powrotu":      "wznowienie",
-    "reaktywacja":  "wznowienie", "reaktywowac":  "wznowienie",
-    "kontynuowac":  "wznowienie", "kontynuacja":  "wznowienie",
-
-    # ── ocena ─────────────────────────────────────────────────────────────────
-    "ocene":    "ocena", "oceny":    "ocena", "ocenom":   "ocena",
-    "srednia":  "ocena", "sredniej": "ocena", "srednią":  "ocena",
-    "wynikow":  "ocena", "wyniki":   "ocena", "wynik":    "ocena",
-    "trojka":   "ocena", "czworka":  "ocena", "piatka":   "ocena",
-    "dwojka":   "ocena", "jedynka":  "ocena",
-    "stopien":  "ocena", "stopnia":  "ocena",
-    "punkty":   "ocena", "punktow":  "ocena",
-    "gpa":      "ocena",
-
-    # ── praca dyplomowa ───────────────────────────────────────────────────────
-    "dyplomowa":   "dyplom", "dyplomowej":  "dyplom", "dyplomowym":  "dyplom",
-    "dyplomowe":   "dyplom", "dyplomowy":   "dyplom",
-    "inzynierska": "dyplom", "inzynierskiej":"dyplom",
-    "magisterska": "dyplom", "magisterskiej":"dyplom",
-    "obrone":      "dyplom", "obrona":      "dyplom", "obrony":      "dyplom",
-    "obronil":     "dyplom", "obronie":     "dyplom",
-    "promotor":    "dyplom", "promotora":   "dyplom", "promotorem":  "dyplom",
-    "recenzent":   "dyplom", "recenzenta":  "dyplom",
-    "antyplagiat": "dyplom", "plagiat":     "dyplom",
-    "teza":        "dyplom", "tezy":        "dyplom",
-    "praca":       "dyplom", "pracy":       "dyplom", "prace":       "dyplom",
-    "projekt":     "dyplom", "projektu":    "dyplom",
-
-    # ── nieobecność ───────────────────────────────────────────────────────────
-    "nieobecnosci":  "nieobecnosc", "nieobecnoscia": "nieobecnosc",
-    "nieobecnych":   "nieobecnosc", "nieobecny":     "nieobecnosc",
-    "opuscic":       "nieobecnosc", "opuszczac":     "nieobecnosc",
-    "opoznienie":    "nieobecnosc", "spoznienie":    "nieobecnosc",
-    "nie przysc":    "nieobecnosc", "nie pojsc":     "nieobecnosc",
-    "ominac":        "nieobecnosc", "ominiety":      "nieobecnosc",
-    "choroba":       "nieobecnosc", "choroby":       "nieobecnosc",
-    "zwolnienie":    "nieobecnosc", "zwolnienia":    "nieobecnosc",
-    "l4":            "nieobecnosc",
-    "wagarowac":     "nieobecnosc", "wagary":        "nieobecnosc",
-
-    # ── powtarzanie przedmiotu ────────────────────────────────────────────────
-    "powtarzac":    "powtarzanie", "powtorzyc":    "powtarzanie",
-    "powtarzania":  "powtarzanie", "powtarzal":    "powtarzanie",
-    "powtarzany":   "powtarzanie", "powtarzanego": "powtarzanie",
-    "drugi raz":    "powtarzanie", "po raz drugi": "powtarzanie",
-    "ponownie":     "powtarzanie", "jeszcze raz":  "powtarzanie",
-    "warunkowo":    "powtarzanie",
-
-    # ── praktyki ──────────────────────────────────────────────────────────────
-    "praktyk":      "praktyki", "praktyke":     "praktyki",
-    "praktykant":   "praktyki", "praktykanta":  "praktyki",
-    "staz":         "praktyki", "stazu":        "praktyki", "staze":      "praktyki",
-    "praktyczne":   "praktyki", "praktycznego": "praktyki",
-    "praca zawodowa":"praktyki","firmy":        "praktyki",
-
-    # ── studia / organizacja ──────────────────────────────────────────────────
-    "studiow":    "studia", "studiach":   "studia", "studiuje":  "studia",
-    "kierunek":   "studia", "kierunku":   "studia", "kierunki":  "studia",
-    "wydzial":    "studia", "wydzialu":   "studia",
-    "semestrze":  "semestr", "semestru":  "semestr", "semestrow": "semestr",
-    "etap":       "semestr", "etapu":     "semestr", "etapie":    "semestr",
-    "rok":        "semestr", "roku":      "semestr", "rocznik":   "semestr",
-    "tygodniu":   "tydzien", "tygodnie":  "tydzien", "tygodni":   "tydzien",
-    "tygodniowy": "tydzien",
-
-    # ── indywidualna organizacja studiów (IOS) ────────────────────────────────
-    "ios":              "indywidualny", "indywidualnie":    "indywidualny",
-    "indywidualnego":   "indywidualny", "indywidualnym":    "indywidualny",
-    "elastyczny":       "indywidualny", "dostosowanie":     "indywidualny",
-
-    # ── egzamin komisyjny ─────────────────────────────────────────────────────
-    "komisyjny":    "komisyjny", "komisyjnego":  "komisyjny",
-    "komisje":      "komisyjny", "komisji":      "komisyjny",
-    "odwolanie":    "komisyjny", "odwolac":      "komisyjny",
-    "kwestionowac": "komisyjny", "protest":      "komisyjny",
-    "skarga":       "komisyjny", "skarzyc":      "komisyjny",
-    "podwazyc":     "komisyjny", "zakwestionowac":"komisyjny",
-    "obserwator":   "komisyjny",
-    "obserwatora":  "komisyjny",
-    "obserwatorem": "komisyjny",
-    "wniosek":      "komisyjny",
-
-    # ── ECTS / punkty ─────────────────────────────────────────────────────────
-    "ects":       "punkty", "kredyty":    "punkty",
-    "punktacja":  "punkty", "punktow":    "punkty",
-
-    # ── stypendia ─────────────────────────────────────────────────────────────
-    "stypendium":   "stypendium", "stypendialny":  "stypendium",
-    "stypendysty":  "stypendium", "stypendystow":  "stypendium",
-    "dofinansowanie":"stypendium", "zapomoga":     "stypendium",
-    "socjalne":     "stypendium", "socjalnego":    "stypendium",
-    "rektora":      "stypendium", "naukowe":       "stypendium",
-
-    # ── dziekanat / administracja ─────────────────────────────────────────────
-    "dziekanat": "dziekan", "dziekanatu": "dziekan",
-    "dziekana": "dziekan", "dziekanem": "dziekan",
-    "prodziekan": "dziekan", "prodziekana": "dziekan",
-    "wniosku": "dziekan", "wnioski": "dziekan",
-    "podanie": "dziekan", "podania": "dziekan",
-    "zgoda": "dziekan", "zgody": "dziekan",
-    "decyzja": "dziekan", "decyzji": "dziekan",
-    # ── poprawki ──────────────────────────────────────────────────────────────
-    #"egzamin komisyjny": "komisja komisyjny kwestionuje wniosek dziekan prodziekan przewodniczy obserwator trzech osob",
-    #"obserwatora na egzaminie": "egzamin komisyjny komisja obserwator dziekan prodziekan przewodniczy",
-    #"obserwatora": "komisja komisyjny obserwator dziekan prodziekan",
-    "dni": "egzamin",
-    "terminem": "egzamin",
-
-}
-
-ROZSZERZENIA_ZAPYTAN = {
-    "egzamin": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
-    "egzaminu": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
-    "egzamni": "dwukrotnego egzaminatorem terminie sesji unieważnienie",
-    "komisyjny": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
-    "komisji": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
-    "obserwator": "komisyjny kwestionuje sposób warunki zakres wniosek egzaminatora dziekan zarządzi",
-    "procent": "skala ocen bardzo dobry dostateczny niedostateczny procent stopień opanowania",
-    "piatke": "skala bardzo dobry piec dziewiecdziesiat sto procent stopień",
-    "czworke": "skala dobry cztery siedemdziesiat siedemdziesiat dziewiec procent stopień",
-    "trojke": "skala dostateczny trzy piecdziesiat piecdziesiat dziewiec procent stopień",
-    "cztery i pol": "skala dobry plus cztery piec osiemdziesiat osiemdziesiat dziewiec procent",
-    "rezygnacje": "skreśla rektor rezygnacji pisemne oświadczenie lista studentów",
-    "rezygnacja": "skreśla rektor rezygnacji pisemne oświadczenie lista studentów",
-    "niezapisanie": "skreśla rektor niepodjecia lista studentów zapisy rejestracja",
-    "sesja letnia": "lipiec sesja egzaminacyjna konczy pietnastu tygodni kalendarz",
-    "konczy sesja": "lipiec sesja egzaminacyjna konczy pietnastu tygodni kalendarz",
-    "ile dni": "pieciodniowym odstepem drugi termin egzaminu",
-    "urlop dziekanski": "urlop dziekanski dwoch etapow nieprzekraczajacym calym toku",
-    "ile urlopow": "urlop dziekanski dwoch etapow nieprzekraczajacym calym toku",
-    "zdac":        "dwukrotnego egzaminatorem terminie sesji",
-    "zdawac":      "dwukrotnego egzaminatorem terminie sesji",
-    "oblac":       "dwukrotnego egzaminatorem terminie sesji",
-    "poprawka":    "dwukrotnego egzaminatorem terminie sesji",
-    "podejsc":     "dwukrotnego egzaminatorem terminie sesji",
-    "urlop":       "dziekanski zdrowotny zawodowy rodzicielski udzielony semestrów",
-    "urlopu":      "dziekanski zdrowotny zawodowy rodzicielski udzielony semestrów",
-    "dziekanski":  "urlop dziekanski zdrowotny zawodowy udzielony",
-    "nieobecnosc": "nieobecnosci limit dopuszczalnych uczestniczenia zapisany zarejestrowany obowiazany",
-    "dyplom": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
-    "praca": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
-    "dyplomowa": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
-    "wspolna": "dyplomowej promotor opiekun recenzent antyplagiat streszczenie pisemna",
-    "wznowienie": "wznowienia przywrocenie harmonogramem semestralnej posrednictwem pisemny wniosek reaktywacja",
-    "wznowic": "wznowienia przywrocenie harmonogramem semestralnej posrednictwem pisemny wniosek reaktywacja",
-    "wznowic po": "wznowienia przywrocenie harmonogramem semestralnej pisemny wniosek",
-    "wznowic studia": "wznowienia przywrocenie harmonogramem semestralnej pisemny wniosek",
-    "skreslenie": "skresla rektor niepodjecia rezygnacji niezlozenia wydaleniem",
-    "ocena": "skala bardzo dobry dostateczny niedostateczny procent prog",
-    "oceny": "skala bardzo dobry dostateczny niedostateczny procent prog",
-    "regulaminie": "skala bardzo dobry dostateczny niedostateczny procent prog",
-    "powtarzanie": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
-    "powtorzyc": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
-    "powtarzac": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
-    "powtarzac semestr": "niezaliczenia przedmiotu ponownego udzialu cyklu dydaktycznym zobowiazany",
-    "semestr": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
-    "semestru": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
-    "dlugo": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
-    "trwa": "tygodni kalendarz akademicki pazdziernika wrzesnia rektor",
-    "komisja": "komisyjny kwestionuje sposob warunki zakres wniosek egzaminatora",
-    "komisji egzaminacyjnej": "egzamin komisyjny dziekan prodziekan trzech osob obserwator",
-    "komisyjny": "egzamin komisyjny kwestionuje ocene sposob warunki zakres wniosek dziekan prodziekan przewodniczacy komisji trzech osob obserwator",
-    "obserwatora na egzaminie": "egzamin komisyjny obserwator komisja dziekan prodziekan",
-    "egzamin komisyjny": "komisyjny wniosek kwestionuje ocene dziekan prodziekan komisja obserwator",
-
-}
-
 
 def levenshtein(a, b):
     """oblicza odległość edycyjną między dwoma słowami"""
@@ -460,13 +234,14 @@ class Wyszukiwarka:
 
         # rozszerzanie zapytania – doklejamy unikalne słowa z właściwego paragrafu
         rozszerzenie = []
+
         for tok in tokeny_pytania:
-            if tok in ROZSZERZENIA_ZAPYTAN:
-                dodatkowe = tokenizuj(ROZSZERZENIA_ZAPYTAN[tok])
+            if tok in ROZSZERZENIA:
+                dodatkowe = tokenizuj(ROZSZERZENIA[tok])
                 rozszerzenie.extend(dodatkowe)
-        # sprawdź frazy dwuwyrazowe
+            # sprawdź frazy dwuwyrazowe
         pytanie_lower = usun_polskie_znaki(pytanie.lower())
-        for fraza, rozszerzenie_frazy in ROZSZERZENIA_ZAPYTAN.items():
+        for fraza, rozszerzenie_frazy in ROZSZERZENIA.items():
             if ' ' in fraza and fraza in pytanie_lower:
                 rozszerzenie.extend(tokenizuj(rozszerzenie_frazy))
         tokeny_pytania = tokeny_pytania + rozszerzenie

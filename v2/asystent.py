@@ -124,59 +124,9 @@ def main():
             print(f"  Słów w słowniku:    {len(w.idf)}\n")
 
         else:
-            ROZSZERZENIA = {
-                # egzamin
-                "wznow":         "wznowienie studiów przywrócenie praw studenta",
-                "drugi raz":     "egzamin termin dwukrotnie składanie",
-                "poprawka":      "egzamin termin dwukrotnie składanie",
-                "podejsc":       "egzamin termin dwukrotnie składanie",
-                "podchodzic":    "egzamin termin dwukrotnie składanie",
-                "kolos":         "egzamin zaliczenie termin",
-                "obleje":        "egzamin niezdany termin poprawkowy",
-                "nie zdam":      "egzamin niezdany termin poprawkowy",
-                "nie zdalam":    "egzamin niezdany termin poprawkowy",
-                "komisyjny":     "egzamin komisja kwestionowanie oceny",
-                "odwolanie":     "egzamin komisja kwestionowanie oceny",
-                # zaliczenie / warunek
-                "warunek":       "zaliczenie warunkowe powtarzanie przedmiotu",
-                "warunkowo":     "zaliczenie warunkowe powtarzanie przedmiotu",
-                "niezaliczony":  "zaliczenie powtarzanie przedmiotu",
-                # urlop
-                "przerwa":       "urlop dziekański semestr zawieszenie",
-                "ciaza":         "urlop zdrowotny rodzicielski ciąża",
-                "macierzynski":  "urlop rodzicielski ciąża student",
-                "wolne":         "urlop dziekański zawieszenie",
-                # skreślenie
-                "skresla":       "skreślenie lista studentów rezygnacja",
-                "wyrzuc":        "skreślenie wydalenie lista studentów",
-                "rzucic":        "skreślenie rezygnacja lista studentów",
-                "rezygnacja":    "skreślenie rezygnacja lista studentów",
-                # czas trwania
-                "ile tygodni":   "tygodnie semestr zajęcia kalendarz",
-                "ile semestr":   "tygodnie semestr zajęcia kalendarz",
-                "tygodni":       "tygodnie semestr zajęcia kalendarz",
-                "jak dlugo":     "tygodnie semestr zajęcia kalendarz",
-                "ile trwa":      "tygodnie semestr czas trwania",
-                # praca dyplomowa
-                "promotor":      "praca dyplomowa promotor opiekun",
-                "antyplagiat":   "praca dyplomowa plagiat antyplagiat",
-                "obron":         "praca dyplomowa obrona egzamin dyplomowy",
-                "temat pracy":   "praca dyplomowa temat zmiana",
-                # nieobecność
-                "choroba":       "nieobecność usprawiedliwienie zwolnienie",
-                "l4":            "nieobecność usprawiedliwienie zwolnienie lekarskie",
-                "wagary":        "nieobecność zajęcia opuszczenie",
-                # stypendia
-                "stypendium":    "stypendium socjalne naukowe rektora",
-                "zapomoga":      "stypendium zapomoga pomoc finansowa",
-                # administracja
-                "wniosek":       "dziekan podanie wniosek zgoda",
-                "podanie":       "dziekan podanie wniosek zgoda",
-                "ios":           "indywidualna organizacja studiów plan",
-                # ECTS
-                "ects":          "punkty kredyty zaliczenie przedmiot",
-                "kredyty":       "punkty ects zaliczenie przedmiot",
-            }
+            from core.slowniki import ROZSZERZENIA
+
+            pytanie_do_szukania = pytanie
 
             pytanie_do_szukania = pytanie
             for fraza, rozszerzenie in ROZSZERZENIA.items():
@@ -186,8 +136,9 @@ def main():
 
             # krótkie pytania (1-2 słowa) – rozszerz o kontekst ze słownika synonimów
             if len(pytanie.split()) <= 2:
-                from core.wyszukiwarka import SYNONIMY
+                from core.slowniki import SYNONIMY
                 slowo_bazowe = pytanie.strip().lower().rstrip('?!')
+
                 pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]
                 if pasujace:
                     pytanie_do_szukania = pytanie + " " + " ".join(set(pasujace))

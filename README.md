@@ -73,9 +73,10 @@ Instead of generating answers from memory (risking hallucinations), the system f
 - BM25 vector cache (`.pkl` file) — instant startup
 - Web interface (Flask + HTML/CSS/JS)
 - CLI interface with conversation history
-- **SQLite database** for logs, statistics and feedback (replaces `log.txt`)
+- **SQLite database** for statistics and feedback (`v2/asystent.db`)
+- Text logs to `v2/logs/log.txt` (GUI + CLI runtime events)
 - Feedback buttons 👍/👎 in GUI — saved to database
-- Automated tests (`tests/test.py`) — 20 test questions
+- Automated tests (`tests/test.py`) — regression set of 50+ questions
 - `/statystyki` endpoint — query count, average similarity, top paragraphs
 
 ---
@@ -84,7 +85,7 @@ Instead of generating answers from memory (risking hallucinations), the system f
 
 | Metric | Value |
 |---|---|
-| Test set | 20 questions |
+| Test set | run `python tests/test.py` to see current set size |
 | Accuracy (correct paragraph) | run `python tests/test.py` |
 | Response time | < 50 ms |
 | Knowledge base size | 40 paragraphs |
@@ -115,14 +116,14 @@ Mini-GPT/
 ├── core/                   ← search & formatting logic
 │   ├── wyszukiwarka.py     # BM25 + Levenshtein + cosine
 │   ├── formatowanie.py     # response formatting
-│   └── bd.py               # SQLite: logs, stats, feedback
+│   └── bd.py               # SQLite: stats, feedback
 │
 ├── data/
 │   ├── baza_wiedzy.json    # 40 regulation paragraphs (auto-generated)
 │   └── baza_wiedzy_cache.pkl  # BM25 vector cache (auto-generated)
 │
 ├── tests/
-│   └── test.py             # automated tests (20 questions)
+│   └── test.py             # automated tests (regression set, 50+ questions)
 │
 └── templates/
 └── index.html          # web interface
@@ -189,6 +190,23 @@ python tests/test.py
 python asystent.py
 ```
 
+**Optional debug helper (PDF parser check):**
+
+```bash
+python tests/debug_parser.py
+```
+
+### Troubleshooting (v2)
+
+- `FileNotFoundError: ... baza_wiedzy.json`
+  - Run `python parser.py` in `v2` to generate `v2/data/baza_wiedzy.json`.
+- Red underline on `from core...` in IDE
+  - In JetBrains: mark `v2` as **Sources Root** and use the same interpreter as runtime.
+- Relative import error (`attempted relative import with no known parent package`)
+  - Do not run package modules by file path; use project entry points (`python app.py`, `python asystent.py`, `python tests/test.py`).
+- Missing logs in root `logs/`
+  - Runtime logs are stored in `v2/logs/log.txt` (not in repository root).
+
 ---
 
 ### CLI Commands
@@ -213,7 +231,7 @@ python asystent.py
 | **NumPy** | matrix operations |
 | **pdfplumber** | PDF regulation parsing |
 | **Flask** | HTTP server for GUI |
-| **SQLite** | logs, statistics, feedback storage |
+| **SQLite** | statistics and feedback storage |
 | **tqdm** | training progress bar |
 | **Git LFS** | model file storage on GitHub |
 
@@ -311,9 +329,10 @@ Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem gene
 - Cache wektorów BM25 (plik `.pkl`) — natychmiastowy start
 - Interfejs webowy (Flask + HTML/CSS/JS)
 - Interfejs CLI z historią rozmowy
-- **Baza SQLite** dla logów, statystyk i feedbacku (zastąpiła `log.txt`)
+- **Baza SQLite** dla statystyk i feedbacku (`v2/asystent.db`)
+- Logi tekstowe do `v2/logs/log.txt` (zdarzenia uruchomieniowe GUI/CLI)
 - Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy
-- Testy automatyczne (`tests/test.py`) — 20 pytań testowych
+- Testy automatyczne (`tests/test.py`) — zestaw regresyjny 50+ pytań
 - Endpoint `/statystyki` — liczba pytań, średnie dopasowanie, top paragrafy
 
 
@@ -339,14 +358,14 @@ Mini-GPT/
     ├── core/                   ← logika wyszukiwania i formatowania
     │   ├── wyszukiwarka.py     # BM25 + Levenshtein + cosinus
     │   ├── formatowanie.py     # formatowanie odpowiedzi
-    │   └── bd.py               # SQLite: logi, statystyki, feedback
+    │   └── bd.py               # SQLite: statystyki, feedback
     │
     ├── data/
     │   ├── baza_wiedzy.json    # 40 paragrafów regulaminu (auto-generowany)
     │   └── baza_wiedzy_cache.pkl  # cache wektorów BM25 (auto-generowany)
     │
     ├── tests/
-    │   └── test.py             # testy automatyczne (20 pytań)
+    │   └── test.py             # testy automatyczne (zestaw regresyjny, 50+ pytań)
     │
     └── templates/
         └── index.html          # interfejs webowy
@@ -357,7 +376,7 @@ Mini-GPT/
 
 | Metryka | Wartość |
 |---|---|
-| Zestaw testowy | 20 pytań |
+| Zestaw testowy | uruchom `python tests/test.py`, aby zobaczyć aktualny rozmiar |
 | Trafność (właściwy paragraf) | uruchom `python tests/test.py` |
 | Czas odpowiedzi | < 50 ms |
 | Rozmiar bazy | 40 paragrafów |
@@ -426,6 +445,23 @@ python tests/test.py
 python asystent.py
 ```
 
+**Opcjonalnie — szybki debug parsera PDF:**
+
+```bash
+python tests/debug_parser.py
+```
+
+### Rozwiązywanie problemów (v2)
+
+- `FileNotFoundError: ... baza_wiedzy.json`
+  - Uruchom `python parser.py` w katalogu `v2`, aby wygenerować `v2/data/baza_wiedzy.json`.
+- Czerwone podkreślenie `from core...` w IDE
+  - W JetBrains oznacz `v2` jako **Sources Root** i użyj tego samego interpretera co przy uruchomieniu.
+- Błąd importu względnego (`attempted relative import with no known parent package`)
+  - Nie uruchamiaj modułów pakietu po ścieżce pliku; używaj punktów wejścia projektu (`python app.py`, `python asystent.py`, `python tests/test.py`).
+- Brak logów w `logs/` w katalogu głównym repo
+  - Logi runtime zapisują się do `v2/logs/log.txt`.
+
 ---
 
 ### Komendy CLI
@@ -450,7 +486,7 @@ python asystent.py
 | **NumPy** | operacje na macierzach |
 | **pdfplumber** | parsowanie regulaminu PDF |
 | **Flask** | serwer HTTP dla GUI |
-| **SQLite** | logi, statystyki, feedback |
+| **SQLite** | statystyki i feedback |
 | **tqdm** | pasek postępu treningu |
 | **Git LFS** | przechowywanie plików modelu na GitHub |
 

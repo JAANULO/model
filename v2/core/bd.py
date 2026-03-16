@@ -6,7 +6,8 @@ import sqlite3
 import os
 from datetime import datetime
 
-PLIK_DB = "asystent.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PLIK_DB = os.path.join(BASE_DIR, "..", "asystent.db")
 
 
 def polacz():

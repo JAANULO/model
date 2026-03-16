@@ -7,6 +7,7 @@ Adres:        http://localhost:5000
 from flask import Flask, request, jsonify, render_template
 from core.wyszukiwarka import Wyszukiwarka
 from core.formatowanie import formatuj_odpowiedz
+from core.slowniki import ROZSZERZENIA, SYNONIMY
 import logging
 import os
 from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki
@@ -63,19 +64,6 @@ def zapytaj():
     if wyszukiwarka is None:
         return jsonify({"blad": "Wyszukiwarka nie załadowana"}), 500
 
-    # rozszerzenia zapytania (skopiowane z asystent.py)
-    ROZSZERZENIA = {
-        "wznow":       "wznowienie studiów przywrócenie praw studenta",
-        "skresla":     "skreślenie lista studentów rezygnacja",
-        "ile tygodni": "tygodnie semestr zajęcia kalendarz",
-        "tygodni":     "tygodnie semestr zajęcia kalendarz",
-        "jak dlugo":   "tygodnie semestr zajęcia kalendarz",
-        "podejsc":     "egzamin termin dwukrotnie składanie",
-        "podchodzic":  "egzamin termin dwukrotnie składanie",
-        "drugi raz":   "egzamin termin dwukrotnie składanie",
-        "poprawka":    "egzamin termin dwukrotnie składanie",
-    }
-
     pytanie_do_szukania = pytanie
     for fraza, rozszerzenie in ROZSZERZENIA.items():
         if fraza in pytanie.lower():
@@ -84,7 +72,6 @@ def zapytaj():
 
     # rozszerzenie krótkich pytań
     if len(pytanie.split()) <= 2:
-        from core.wyszukiwarka import SYNONIMY
         slowo_bazowe = pytanie.strip().lower().rstrip("?!")
         pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]
         if pasujace:

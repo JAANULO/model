@@ -5,8 +5,14 @@ Sprawdza czy 20 pytań trafia w właściwy paragraf.
 """
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from core.wyszukiwarka import Wyszukiwarka
+
+try:
+    # gdy uruchamiasz z katalogu v2 (pakiet widoczny)
+    from core.wyszukiwarka import Wyszukiwarka
+except ImportError:
+    # fallback: gdy uruchamiasz plik bezpośrednio z tests/
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from core.wyszukiwarka import Wyszukiwarka
 
 TESTY = [
     # § 18 Egzaminy
