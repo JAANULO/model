@@ -18,6 +18,7 @@ v2/.env
 # IDE
 .vscode/
 .idea/
+*.iml
 
 # System
 .DS_Store
@@ -27,3 +28,5 @@ Thumbs.db
 v2/data/baza_wiedzy_cache.pkl
 v2/logs/
 log.txt
+*.db
+asystent.db
