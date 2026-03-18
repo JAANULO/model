@@ -73,7 +73,7 @@ Instead of generating answers from memory (risking hallucinations), the system f
 - BM25 vector cache (`.pkl` file) — instant startup
 - Web interface (Flask + HTML/CSS/JS)
 - CLI interface with conversation history
-- **SQLite database** for statistics and feedback (`v2/asystent.db`)
+- **SQLite database** for statistics and feedback (`v2/data/asystent.db`)
 - Text logs to `v2/logs/log.txt` (GUI + CLI runtime events)
 - Feedback buttons 👍/👎 in GUI — saved to database
 - Automated tests (`tests/test.py`) — regression set of 50+ questions
@@ -329,7 +329,7 @@ Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem gene
 - Cache wektorów BM25 (plik `.pkl`) — natychmiastowy start
 - Interfejs webowy (Flask + HTML/CSS/JS)
 - Interfejs CLI z historią rozmowy
-- **Baza SQLite** dla statystyk i feedbacku (`v2/asystent.db`)
+- **Baza SQLite** dla statystyk i feedbacku (`v2/data/asystent.db`)
 - Logi tekstowe do `v2/logs/log.txt` (zdarzenia uruchomieniowe GUI/CLI)
 - Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy
 - Testy automatyczne (`tests/test.py`) — zestaw regresyjny 50+ pytań

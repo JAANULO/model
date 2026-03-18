@@ -8,12 +8,15 @@ import json
 import math
 import re
 import os
-from core.bd import pobierz_wspolczynniki_zbiorczo
 
 try:
-    from .slowniki import SYNONIMY, ROZSZERZENIA  # uruchomienie jako pakiet
+    # uruchomienie jako pakiet: from core.wyszukiwarka import ...
+    from .bd import pobierz_wspolczynniki_zbiorczo
+    from .slowniki import SYNONIMY, ROZSZERZENIA
 except ImportError:
-    from slowniki import SYNONIMY, ROZSZERZENIA   # uruchomienie pliku bezpośrednio
+    # uruchomienie pliku bezpośrednio: python core/wyszukiwarka.py
+    from bd import pobierz_wspolczynniki_zbiorczo
+    from slowniki import SYNONIMY, ROZSZERZENIA
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 

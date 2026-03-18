@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PLIK_DB = os.path.join(BASE_DIR, "..", "asystent.db")
+PLIK_DB = os.path.join(BASE_DIR, "..", "data","asystent.db")
 
 
 def polacz():
@@ -76,3 +76,26 @@ def pobierz_wspolczynniki_zbiorczo():
         else:
             slownik[w['tytul']] = 1.0
     return slownik
+
+def pobierz_statystyki():
+    """Pobiera statystyki sesji, wyświetlane pod komendą /statystyki"""
+    with polacz() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
+        avg   = conn.execute("SELECT AVG(podobienstwo) FROM pytania").fetchone()[0]
+        top   = conn.execute("""
+            SELECT tytul, COUNT(*) as n
+            FROM pytania WHERE tytul IS NOT NULL
+            GROUP BY tytul ORDER BY n DESC LIMIT 5
+        """).fetchall()
+        zle   = conn.execute("""
+            SELECT p.pytanie, p.tytul, p.podobienstwo
+            FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
+            WHERE f.ocena = -1
+            ORDER BY f.czas DESC LIMIT 10
+        """).fetchall()
+    return {
+        "pytania":             total,
+        "srednie_podobienstwo": round((avg or 0)*100, 1),
+        "top_paragrafy":       [dict(w) for w in top],
+        "zle_odpowiedzi":      [dict(z) for z in zle]
+    }

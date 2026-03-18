@@ -47,7 +47,7 @@ from shared.tokenizer   import Tokenizer
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 PLIK_DANYCH  = os.path.join(BASE_DIR, "data", "dane.json")
-PLIK_CACHE   = os.path.join(BASE_DIR, "model_cache.pkl")
+PLIK_CACHE   = os.path.join(BASE_DIR, "data","model_cache.pkl")
 PLIK_BAZY    = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
 PLIK_DB      = os.path.join(BASE_DIR, "data", "asystent.db")
 WYMIAR       = 128
@@ -58,7 +58,7 @@ EPOKI        = 5000
 LR           = 0.001
 MAKS_DLUGOSC = 512    # zwiększony – fragment regulaminu to ~400 znaków
 BATCH_SIZE   = 32
-PROG_PEWNOSCI = 0.05   # minimalny wynik BM25 żeby użyć kontekstu
+PROG_PEWNOSCI = 0.14   # minimalny wynik BM25 żeby użyć kontekstu
 
 # Pobieramy rozszerzenia z centralnego słownika
 from core.slowniki import ROZSZERZENIA
@@ -68,79 +68,35 @@ from core.slowniki import ROZSZERZENIA
 # ============================================================
 
 def inicjalizuj_db():
-    """tworzy tabele SQLite jeśli nie istnieją"""
-    conn = sqlite3.connect(PLIK_DB)
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS pytania (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            pytanie      TEXT NOT NULL,
-            paragraf     TEXT,
-            podobienstwo REAL,
-            czas         TEXT DEFAULT (datetime('now','localtime'))
-        );
-        CREATE TABLE IF NOT EXISTS feedback (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            pytanie_id  INTEGER REFERENCES pytania(id),
-            ocena       INTEGER NOT NULL,
-            czas        TEXT DEFAULT (datetime('now','localtime'))
-        );
-    """)
-    conn.commit()
-    conn.close()
+    from core.bd import inicjalizuj
+    inicjalizuj()
 
 
 def zapisz_do_db(pytanie, paragraf, podobienstwo):
-    """zapisuje pytanie do bazy, zwraca ID wiersza"""
-    conn = sqlite3.connect(PLIK_DB)
-    cur  = conn.execute(
-        "INSERT INTO pytania (pytanie, paragraf, podobienstwo) VALUES (?,?,?)",
-        (pytanie, paragraf, podobienstwo)
-    )
-    pid = cur.lastrowid
-    conn.commit()
-    conn.close()
-    return pid
+    from core.bd import zapisz_pytanie
+    return zapisz_pytanie(pytanie, paragraf, podobienstwo)
 
 
 def zapisz_feedback(pytanie_id, ocena):
-    """zapisuje ocenę 1 (dobre) lub -1 (złe) dla danego pytania"""
-    conn = sqlite3.connect(PLIK_DB)
-    conn.execute(
-        "INSERT INTO feedback (pytanie_id, ocena) VALUES (?,?)",
-        (pytanie_id, ocena)
-    )
-    conn.commit()
-    conn.close()
+    from core.bd import zapisz_feedback as bd_zapisz_feedback
+    bd_zapisz_feedback(pytanie_id, ocena)
 
 
 def pokaz_statystyki():
-    """wypisuje statystyki z bazy SQLite"""
-    conn  = sqlite3.connect(PLIK_DB)
-    total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
-    avg   = conn.execute("SELECT AVG(podobienstwo) FROM pytania").fetchone()[0]
-    top   = conn.execute("""
-        SELECT paragraf, COUNT(*) AS n FROM pytania
-        WHERE paragraf IS NOT NULL
-        GROUP BY paragraf ORDER BY n DESC LIMIT 5
-    """).fetchall()
-    zle   = conn.execute("""
-        SELECT p.pytanie, p.paragraf FROM feedback f
-        JOIN pytania p ON f.pytanie_id = p.id
-        WHERE f.ocena = -1 ORDER BY f.czas DESC LIMIT 5
-    """).fetchall()
-    conn.close()
+    from core.bd import pobierz_statystyki
+    stats = pobierz_statystyki()
 
     print(f"\n  📊 Statystyki sesji:")
-    print(f"     Zadanych pytań:       {total}")
-    print(f"     Średnie dopasowanie:  {(avg or 0)*100:.1f}%")
-    if top:
+    print(f"     Zadanych pytań:       {stats['pytania']}")
+    print(f"     Średnie dopasowanie:  {stats['srednie_podobienstwo']}%")
+    if stats.get('top_paragrafy'):
         print(f"     Najczęstsze tematy:")
-        for paragraf, n in top:
-            print(f"       • {paragraf[:45]} ({n}×)")
-    if zle:
+        for w in stats['top_paragrafy']:
+            print(f"       • {w['tytul'][:45]} ({w['n']}×)")
+    if stats.get('zle_odpowiedzi'):
         print(f"     Ostatnie złe odpowiedzi (👎):")
-        for pyt, par in zle:
-            print(f"       • '{pyt[:40]}' → {par}")
+        for z in stats['zle_odpowiedzi']:
+            print(f"       • '{z['pytanie'][:40]}' → {z['tytul']}")
     print()
 
 
@@ -338,66 +294,63 @@ def generuj_odpowiedz(pytanie, historia, temperatura, wyszukiwarka, model, token
     """
     Pipeline odpowiedzi:
     1. rozszerz pytanie o synonimy/frazy kluczowe
-    2. BM25 + opcjonalny reranking → najlepszy paragraf
-    3. mini-GPT generuje odpowiedź na podstawie pytania + kontekstu
-
-    Format wejścia dla GPT:
-      użytkownik [pytanie] kontekst [fragment regulaminu] asystent
+    2. BM25 + opcjonalny reranking -> najlepszy paragraf
+    3. odpowiedz formatujemy na podstawie znalezionego fragmentu regulaminu
+       (bez generowania tekstu przez mini-GPT)
     """
+    from core.formatowanie import formatuj_odpowiedz
+
+    # zachowujemy sygnature funkcji dla zgodnosci z reszta kodu
+    _ = (historia, temperatura, model, tokenizer)
+
     pytanie_clean = pytanie.lower().strip().rstrip("?")
 
-    # wyszukaj paragraf
-    if wyszukiwarka is not None:
-        wyniki = szukaj_z_rerankingiem(wyszukiwarka, pytanie_clean, n_wynikow=1)
-    else:
-        wyniki = []
+    if wyszukiwarka is None:
+        return (
+            "Nie mam zaladowanej bazy regulaminu. Uruchom najpierw parser i wyszukiwarke.",
+            None,
+            0.0,
+        )
 
-    if wyniki and wyniki[0]["podobienstwo"] > PROG_PEWNOSCI:
-        fragment  = wyniki[0]["tresc"][:300]
-        paragraf  = wyniki[0]["tytul"]
-        podobienstwo = wyniki[0]["podobienstwo"]
-        kontekst  = f"użytkownik {pytanie_clean} kontekst {fragment} asystent"
-    else:
-        fragment     = None
-        paragraf     = None
-        podobienstwo = 0.0
-        kontekst     = f"użytkownik {pytanie_clean} asystent"
+    wyniki = szukaj_z_rerankingiem(wyszukiwarka, pytanie_clean, n_wynikow=1)
+    if not wyniki:
+        return (
+            "Nie znalazlem odpowiedniego paragrafu. Sprobuj zadac pytanie inaczej.",
+            None,
+            0.0,
+        )
 
-    # generuj przez mini-GPT
-    ids = tokenizer.koduj(kontekst)
+    wynik = wyniki[0]
+    paragraf = wynik["tytul"]
+    podobienstwo = wynik["podobienstwo"]
 
-    with torch.no_grad():
-        for _ in range(200):
-            logits = model.forward(ids[-MAKS_DLUGOSC:])
-            ostatnie = logits[-1] / max(temperatura, 0.01)
+    if podobienstwo <= PROG_PEWNOSCI:
+        return (
+            "Nie jestem pewien odpowiedzi na podstawie regulaminu. "
+            "Doprecyzuj pytanie (np. podaj temat: egzamin, urlop, ocena koncowa).",
+            None,
+            0.0,
+        )
 
-            # używamy natywnych funkcji Torch zamiast CPU + Numpy
-            probs = torch.softmax(ostatnie, dim=-1)
+    odp = formatuj_odpowiedz(pytanie_clean, wynik)
 
-            if temperatura < 0.05:
-                nastepny = torch.argmax(probs).item()
-            else:
-                nastepny = torch.multinomial(probs, num_samples=1).item()
+    if isinstance(odp, dict):
+        wstep = odp.get("wstep", "").strip()
+        punkty = [p.strip() for p in odp.get("punkty", []) if isinstance(p, str) and p.strip()]
+        tekst = (wstep + " " + " ".join(punkty)).strip()
+        tekst = " ".join(tekst.split())  # porzadkuje biale znaki
 
-            ids.append(nastepny)
-            if "koniec" in tokenizer.dekoduj(ids)[-10:]:
-                break
+        if not tekst:
+            tekst = wynik.get("tresc", "")[:300].strip()
 
-    tekst = tokenizer.dekoduj(ids)
+        return tekst, odp.get("tytul", paragraf), odp.get("podobienstwo", podobienstwo)
 
-    # wyciągnij odpowiedź po ostatnim znaczniku "asystent"
-    if "asystent" in tekst:
-        idx       = tekst.rfind("asystent") + len("asystent")
-        odpowiedz = tekst[idx:]
-    else:
-        odpowiedz = tekst
+    tekst = str(odp).strip() if odp is not None else ""
+    if not tekst:
+        tekst = wynik.get("tresc", "")[:300].strip()
 
-    for stop in ["koniec", "użytkownik"]:
-        if stop in odpowiedz:
-            odpowiedz = odpowiedz[:odpowiedz.index(stop)]
+    return tekst, paragraf, podobienstwo
 
-    odpowiedz = odpowiedz.strip()
-    return (odpowiedz if odpowiedz else "..."), paragraf, podobienstwo
 
 
 # ============================================================
@@ -599,7 +552,7 @@ if __name__ == "__main__":
                 else:
                     print("  ⚠️  Wyszukiwarka niedostępna.")
                 print(f"     Plik bazy: {os.path.abspath(PLIK_BAZY)}")
-                print(f"     Plik logów: {os.path.abspath(PLIK_DB)}\n")
+                print(f"     Plik bazy SQLite: {os.path.abspath(PLIK_DB)}\n")
                 continue
 
             # ── pomoc ──────────────────────────────────────────

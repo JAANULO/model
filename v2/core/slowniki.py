@@ -126,6 +126,8 @@ SYNONIMY = {
     "prodziekana": "dziekan", "wniosku": "dziekan", "wnioski": "dziekan",
     "podanie": "dziekan", "podania": "dziekan", "zgoda": "dziekan",
     "zgody": "dziekan", "decyzja": "dziekan", "decyzji": "dziekan",
+    "wazy": "waga", "waza": "waga", "wage": "waga", "koncowej": "koncowy",
+
 }
 
 ROZSZERZENIA = {
@@ -218,4 +220,8 @@ ROZSZERZENIA = {
     "ios": "indywidualna organizacja studiów plan",
     "ects": "punkty kredyty zaliczenie przedmiot",
     "kredyty": "punkty ects zaliczenie przedmiot",
+    "ocena koncowa": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
+    "waga pracy dyplomowej": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
+    "wazy ocena": "oceny za studia srednia wazona wspolczynnik",
+
 }
