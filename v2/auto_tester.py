@@ -11,7 +11,7 @@ Klucz API Gemini (darmowy): https://aistudio.google.com/app/apikey
 Ustaw w pliku .env:  GEMINI_API_KEY=twój_klucz
 """
 
-import os, sys, json, time
+import os, sys, json, time, re
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 try:
@@ -36,25 +36,47 @@ if not API_KEY:
 
 klient = genai.Client(api_key=API_KEY)
 
-LICZBA_PYTAN  = 2
-PLIK_WYNIKOW  = "auto_test_wyniki.json"
-PLIK_POPRAWEK = "auto_test_poprawki.py"
+BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+LOGS_DIR      = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)  # Tworzy folder logs, jeśli nie istnieje
+
+LICZBA_PYTAN  = 1
+PLIK_WYNIKOW  = os.path.join(LOGS_DIR, "auto_test_wyniki.json")
+PLIK_POPRAWEK = os.path.join(LOGS_DIR, "auto_test_poprawki.py")
 
 # ── pomocnicze ────────────────────────────────────────────────
 
-def zapytaj_gemini(prompt: str, proba=3) -> str:
+def zapytaj_gemini(prompt: str, proba=4) -> str:
+    # Wymuszenie modelu, który ma odblokowane darmowe pule
+    nazwa_modelu = "gemini-2.5-flash"
+
     for i in range(proba):
         try:
+            # Opóźnienie zapobiegające spamowaniu API
             time.sleep(4)
             return klient.models.generate_content(
-                model="gemini-2.0-flash-lite",
+                model=nazwa_modelu,
                 contents=prompt
             ).text.strip()
 
         except Exception as e:
+            blad_str = str(e)
+
+            # Jeśli model nie istnieje, przerywamy natychmiast
+            if "404" in blad_str or "NOT_FOUND" in blad_str:
+                print(f"  ⚠ Krytyczny błąd: Nie znaleziono modelu {nazwa_modelu}")
+                raise
+
             if i < proba - 1:
-                print(f"  ⚠ Gemini błąd ({e}), czekam 5s...")
-                time.sleep(5)
+                # Szuka dokładnego czasu blokady w błędzie
+                match = re.search(r'retry in ([\d\.]+)s', blad_str)
+                if match:
+                    czas_czekania = float(match.group(1)) + 2.0
+                    print(f"  ⚠ Przekroczono limit zapytań (RPM). Czekam {czas_czekania:.1f}s...")
+                    time.sleep(czas_czekania)
+                else:
+                    print("  ⚠ Nierozpoznany błąd blokady. Czekam 60s...")
+                    time.sleep(60)
             else:
                 raise
 
@@ -123,8 +145,7 @@ def analizuj_bledy(bledy: list, baza: list) -> str:
                     break
 
     prompt = f"""Analizujesz błędy systemu wyszukiwania BM25 dla regulaminu PWr.
-System używa słownika rozszerzeń zapytań (ROZSZERZENIA_ZAPYTAN) który mapuje
-słowa kluczowe z pytań na unikalne słowa z właściwych paragrafów.
+    System używa słownika rozszerzeń zapytań (ROZSZERZENIA) w pliku core/slowniki.py, który mapuje słowa kluczowe z pytań na unikalne słowa z właściwych paragrafów.
 
 Błędne odpowiedzi:
 {json.dumps(bledy, ensure_ascii=False, indent=2)}
@@ -132,7 +153,7 @@ Błędne odpowiedzi:
 Treści oczekiwanych paragrafów:
 {json.dumps(kontekst, ensure_ascii=False, indent=2)}
 
-Dla każdego błędu zaproponuj nowy wpis do słownika ROZSZERZENIA_ZAPYTAN.
+Dla każdego błędu zaproponuj nowy wpis do słownika ROZSZERZENIA.
 Wpisy powinny mapować słowa kluczowe z pytania na unikalne słowa z właściwego paragrafu.
 
 Zwróć TYLKO słownik Python (bez żadnego dodatkowego tekstu):
@@ -147,19 +168,20 @@ Zwróć TYLKO słownik Python (bez żadnego dodatkowego tekstu):
 
 
 def zapisz_poprawki(poprawki_tekst: str, bledy: list):
-    with open(PLIK_POPRAWEK, "w", encoding="utf-8") as f:
+    with open(PLIK_POPRAWEK, "a", encoding="utf-8") as f:
         f.write("# ============================================================\n")
-        f.write("# SUGEROWANE POPRAWKI do ROZSZERZENIA_ZAPYTAN w wyszukiwarka.py\n")
+        f.write("# SUGEROWANE POPRAWKI do ROZSZERZENIA w core/slowniki.py\n")
         f.write("# Wygenerowane automatycznie przez auto_tester.py\n")
-        f.write("# Skopiuj potrzebne wpisy do słownika ROZSZERZENIA_ZAPYTAN\n")
+        f.write("# Skopiuj potrzebne wpisy do słownika ROZSZERZENIA\n")
         f.write("# ============================================================\n\n")
         f.write("# Błędne pytania:\n")
+
         for b in bledy:
             f.write(f"#   ✗ '{b['pytanie']}'\n")
             f.write(f"#     → otrzymano:  '{b['otrzymano']}'\n")
             if b.get('oczekiwany_paragraf'):
                 f.write(f"#     → oczekiwano: '{b['oczekiwany_paragraf']}'\n")
-        f.write("\n# Sugerowane wpisy do ROZSZERZENIA_ZAPYTAN:\n")
+        f.write("\n# Sugerowane wpisy do ROZSZERZENIA:\n")
         f.write(poprawki_tekst)
         f.write("\n")
 
@@ -240,15 +262,34 @@ def uruchom():
         print(f"💡 Sugerowane poprawki zapisane do: {PLIK_POPRAWEK}")
         print("   Otwórz plik i skopiuj wpisy do ROZSZERZENIA_ZAPYTAN\n")
 
+    nowe_wyniki = {
+        "czas": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "trafne": trafne, "total": len(pytania),
+        "trafnosc_procent": round(trafne / len(pytania) * 100, 1),
+        "bledy": bledy, "wyniki": wyniki
+    }
+
+    wszystkie_wyniki = []
+
+    if os.path.exists(PLIK_WYNIKOW):
+        try:
+            with open(PLIK_WYNIKOW, "r", encoding="utf-8") as f:
+                stare_dane = json.load(f)
+                if isinstance(stare_dane, list):
+                    wszystkie_wyniki = stare_dane
+                else:
+                    wszystkie_wyniki = [stare_dane]
+        except json.JSONDecodeError:
+            pass
+
+    wszystkie_wyniki.append(nowe_wyniki)
+
     with open(PLIK_WYNIKOW, "w", encoding="utf-8") as f:
-        json.dump({
-            "trafne": trafne, "total": len(pytania),
-            "trafnosc_procent": round(trafne/len(pytania)*100, 1),
-            "bledy": bledy, "wyniki": wyniki
-        }, f, ensure_ascii=False, indent=2)
+        json.dump(wszystkie_wyniki, f, ensure_ascii=False, indent=2)
 
-    print(f"📊 Pełne wyniki zapisane do: {PLIK_WYNIKOW}")
+    print(f"📊 Pełne wyniki dopisane do: {PLIK_WYNIKOW}")
 
+#print([m.name for m in klient.models.list()])
 
 if __name__ == "__main__":
     uruchom()
