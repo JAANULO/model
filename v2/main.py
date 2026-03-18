@@ -1,28 +1,6 @@
-# ============================================================
-#  MAIN v2 – mini-GPT + asystent regulaminowy PWr
-#
-#  Uruchom: python main.py
-#  Wymagania: pip install numpy pdfplumber tqdm flask
-#
-#  Pliki:
-#    main.py          ← ten plik
-#    transformer.py   ← architektura modelu
-#    tokenizer.py     ← słownik tokenów
-#    dane.json        ← zdania treningowe
-#    wyszukiwarka.py  ← BM25 + reranking do znajdowania paragrafu
-#    embedder.py      ← własny model embeddingowy (opcjonalny)
-#    baza_wiedzy.json ← przetworzone paragrafy regulaminu
-#    db.py            ← SQLite – logi, statystyki, feedback
-#
-#  Ulepszenia względem v1:
-#    - BM25 zamiast TF-IDF (lepsza trafność)
-#    - Reranking przez własne embeddingi (jeśli embedder.py wytrenowany)
-#    - Rozszerzanie zapytań (synonimy + frazy kluczowe)
-#    - SQLite zamiast log.txt (prawdziwe statystyki)
-#    - Feedback 👍/👎 zapisywany do bazy
-#    - Cache wektorów BM25 (natychmiastowy start)
-#    - Nowe komendy: /szukaj, /info, /feedback, /statystyki
-# ============================================================
+# MAIN v2 - mini-GPT + asystent regulaminowy PWr
+# Uruchomienie: python main.py
+# Szczegoly i architektura: README.md
 
 import numpy as np
 import json
