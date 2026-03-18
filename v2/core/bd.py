@@ -55,41 +55,24 @@ def zapisz_feedback(pytanie_id, ocena, komentarz=None):
             (pytanie_id, ocena, komentarz)
         )
 
-    def pobierz_wspolczynnik_feedbacku(tytul):
-        """Oblicza mnożnik dla paragrafu na podstawie łapek w górę/dół (RLHF)"""
-        with polacz() as conn:
-            wynik = conn.execute("""
-                                 SELECT SUM(f.ocena)
-                                 FROM feedback f
-                                          JOIN pytania p ON f.pytanie_id = p.id
-                                 WHERE p.tytul = ?
-                                 """, (tytul,)).fetchone()[0]
-
-        if wynik is None or wynik == 0:
-            return 1.0  # Waga neutralna
-        elif wynik > 0:
-            return 1.2  # 20% bonusu za przewagę pozytywnych ocen
-        else:
-            return 0.8  # 20% kary za przewagę negatywnych ocen
-
-def pobierz_statystyki():
+def pobierz_wspolczynniki_zbiorczo():
+    """Pobiera wszystkie oceny jednym zapytaniem, rozwiązując problem N+1"""
     with polacz() as conn:
-        total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
-        avg   = conn.execute("SELECT AVG(podobienstwo) FROM pytania").fetchone()[0]
-        top   = conn.execute("""
-            SELECT tytul, COUNT(*) as n
-            FROM pytania WHERE tytul IS NOT NULL
-            GROUP BY tytul ORDER BY n DESC LIMIT 5
+        wyniki = conn.execute("""
+            SELECT p.tytul, SUM(f.ocena) as suma_ocen
+            FROM feedback f
+            JOIN pytania p ON f.pytanie_id = p.id
+            WHERE p.tytul IS NOT NULL
+            GROUP BY p.tytul
         """).fetchall()
-        zle   = conn.execute("""
-            SELECT p.pytanie, p.tytul, p.podobienstwo
-            FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
-            WHERE f.ocena = -1
-            ORDER BY f.czas DESC LIMIT 10
-        """).fetchall()
-    return {
-        "pytania":             total,
-        "srednie_podobienstwo": round((avg or 0) * 100, 1),
-        "top_paragrafy":       [{"tytul": r["tytul"], "liczba": r["n"]} for r in top],
-        "zle_odpowiedzi":      [dict(r) for r in zle],
-    }
+
+    slownik = {}
+    for w in wyniki:
+        suma = w['suma_ocen']
+        if suma > 0:
+            slownik[w['tytul']] = 1.2
+        elif suma < 0:
+            slownik[w['tytul']] = 0.8
+        else:
+            slownik[w['tytul']] = 1.0
+    return slownik

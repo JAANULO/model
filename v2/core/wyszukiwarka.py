@@ -8,6 +8,8 @@ import json
 import math
 import re
 import os
+from core.bd import pobierz_wspolczynniki_zbiorczo
+
 try:
     from .slowniki import SYNONIMY, ROZSZERZENIA  # uruchomienie jako pakiet
 except ImportError:
@@ -252,16 +254,17 @@ class Wyszukiwarka:
             for slowo, tf_val in tf_pytania.items()
         }
 
-        from core.bd import pobierz_wspolczynnik_feedbacku
-
+        # Słownik zbiorczy nazywamy 'mapa_wag'
+        mapa_wag = pobierz_wspolczynniki_zbiorczo()
         wyniki = []
+
         for i, wf in enumerate(self.wektory):
             podstawa = podobienstwo_cosinusowe(wektor_pytania, wf)
             tytul = self.fragmenty[i]['tytul']
 
             # Ciągłe uczenie: modyfikujemy wynik na podstawie historii bazy SQLite
-            wspolczynnik = pobierz_wspolczynnik_feedbacku(tytul)
-            wynik_koncowy = podstawa * wspolczynnik
+            mnoznik = mapa_wag.get(tytul, 1.0)
+            wynik_koncowy = podstawa * mnoznik
 
             wyniki.append((wynik_koncowy, i))
 
