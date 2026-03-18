@@ -49,7 +49,7 @@ BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 PLIK_DANYCH  = os.path.join(BASE_DIR, "data", "dane.json")
 PLIK_CACHE   = os.path.join(BASE_DIR, "model_cache.pkl")
 PLIK_BAZY    = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
-PLIK_DB      = os.path.join(BASE_DIR, "asystent.db")
+PLIK_DB      = os.path.join(BASE_DIR, "data", "asystent.db")
 WYMIAR       = 128
 N_WARSTW     = 4
 N_GLOWIC     = 4
@@ -237,30 +237,43 @@ def wczytaj_dane(sciezka):
 # TRENING
 # ============================================================
 
-def zbuduj_batch(zdania_ids, batch_size, maks_dlugosc):
-    probka  = random.sample(zdania_ids, min(batch_size, len(zdania_ids)))
-    probka  = [ids[:maks_dlugosc] for ids in probka if len(ids) >= 2]
+def zbuduj_batch(zdania_ids, tokenizer, batch_size, maks_dlugosc):
+    probka = random.sample(zdania_ids, min(batch_size, len(zdania_ids)))
+    probka = [ids[:maks_dlugosc] for ids in probka if len(ids) >= 2]
     dlugosc = max(len(ids) for ids in probka)
 
     wejscie_lista, cel_lista = [], []
     for ids in probka:
-        w       = ids[:-1]
-        c       = ids[1:]
+        w = ids[:-1]
+        c = ids[1:].copy()
+
+        # SFT Loss Masking
+        idx_token = -1
+        for i in range(len(w)):
+            tekst_czesciowy = tokenizer.dekoduj(w[:i + 1])
+            if tekst_czesciowy.endswith("asystent"):
+                idx_token = i
+                break
+
+        if idx_token != -1:
+            for i in range(idx_token + 1):
+                c[i] = -100
+
         pad_len = dlugosc - 1 - len(w)
         wejscie_lista.append(w + [0] * pad_len)
-        cel_lista.append(c    + [0] * pad_len)
+        cel_lista.append(c + [-100] * pad_len)
 
     wejscie = torch.tensor(wejscie_lista, dtype=torch.long, device=URZADZENIE)
-    cel     = torch.tensor(cel_lista,     dtype=torch.long, device=URZADZENIE)
+    cel = torch.tensor(cel_lista, dtype=torch.long, device=URZADZENIE)
     return wejscie, cel
 
-def trenuj(model, optymalizator, zdania_ids):
-    kryterium        = torch.nn.CrossEntropyLoss(ignore_index=0)
-    n_batchy         = max(1, min(20, len(zdania_ids) // BATCH_SIZE))
+def trenuj(model, optymalizator, zdania_ids, tokenizer):
+    kryterium = torch.nn.CrossEntropyLoss(ignore_index=-100)
+    n_batchy = max(1, min(20, len(zdania_ids) // BATCH_SIZE))
     calkowita_strata = 0.0
 
     for _ in range(n_batchy):
-        wejscie, cel = zbuduj_batch(zdania_ids, BATCH_SIZE, MAKS_DLUGOSC)
+        wejscie, cel = zbuduj_batch(zdania_ids, tokenizer, BATCH_SIZE, MAKS_DLUGOSC)
         optymalizator.zeruj_gradienty()
         logits = model.forward(wejscie)
         B, T, V = logits.shape
@@ -460,13 +473,13 @@ if __name__ == "__main__":
                     dynamic_ncols=True,
                 )
                 for epoka in pasek:
-                    strata = trenuj(model, optymalizator, zdania_ids)
+                    strata = trenuj(model, optymalizator, zdania_ids, tokenizer)
                     pasek.set_postfix(strata=f"{strata:.4f}")
             else:
                 for epoka in range(1, EPOKI + 1):
-                    strata = trenuj(model, optymalizator, zdania_ids)
+                    strata = trenuj(model, optymalizator, zdania_ids, tokenizer)
                     if epoka % 100 == 0 or epoka == EPOKI:
-                        print(f"  Epoka {epoka}/{EPOKI} ({epoka/EPOKI*100:.0f}%)  strata: {strata:.4f}")
+                        print(f"  Epoka {epoka}/{EPOKI} ({epoka / EPOKI * 100:.0f}%)  strata: {strata:.4f}")
 
             print(f"\n  ✅ Trening zakończony!")
             model.ustaw_trening(False)

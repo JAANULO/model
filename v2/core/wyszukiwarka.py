@@ -252,10 +252,19 @@ class Wyszukiwarka:
             for slowo, tf_val in tf_pytania.items()
         }
 
-        wyniki = [
-            (podobienstwo_cosinusowe(wektor_pytania, wf), i)
-            for i, wf in enumerate(self.wektory)
-        ]
+        from core.bd import pobierz_wspolczynnik_feedbacku
+
+        wyniki = []
+        for i, wf in enumerate(self.wektory):
+            podstawa = podobienstwo_cosinusowe(wektor_pytania, wf)
+            tytul = self.fragmenty[i]['tytul']
+
+            # Ciągłe uczenie: modyfikujemy wynik na podstawie historii bazy SQLite
+            wspolczynnik = pobierz_wspolczynnik_feedbacku(tytul)
+            wynik_koncowy = podstawa * wspolczynnik
+
+            wyniki.append((wynik_koncowy, i))
+
         wyniki.sort(reverse=True)
 
         return [

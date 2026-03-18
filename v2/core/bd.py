@@ -55,6 +55,22 @@ def zapisz_feedback(pytanie_id, ocena, komentarz=None):
             (pytanie_id, ocena, komentarz)
         )
 
+    def pobierz_wspolczynnik_feedbacku(tytul):
+        """Oblicza mnożnik dla paragrafu na podstawie łapek w górę/dół (RLHF)"""
+        with polacz() as conn:
+            wynik = conn.execute("""
+                                 SELECT SUM(f.ocena)
+                                 FROM feedback f
+                                          JOIN pytania p ON f.pytanie_id = p.id
+                                 WHERE p.tytul = ?
+                                 """, (tytul,)).fetchone()[0]
+
+        if wynik is None or wynik == 0:
+            return 1.0  # Waga neutralna
+        elif wynik > 0:
+            return 1.2  # 20% bonusu za przewagę pozytywnych ocen
+        else:
+            return 0.8  # 20% kary za przewagę negatywnych ocen
 
 def pobierz_statystyki():
     with polacz() as conn:
