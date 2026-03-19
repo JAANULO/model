@@ -414,7 +414,13 @@
     <h1>Asystent Regulaminowy</h1>
     <p>Politechnika Wrocławska · TF-IDF v2.0</p>
   </div>
-  <div class="status-dot"></div>
+  <button id="btn-clear" onclick="wyczyscChat()" title="Wyczyść rozmowę"
+    style="margin-left:auto;background:none;border:1px solid var(--border);
+    color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;
+    font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
+    ✕ wyczyść
+  </button>
+  <div class="status-dot" style="margin-left:12px;"></div>
 </header>
 
 <div id="chat">
@@ -441,18 +447,52 @@
       </svg>
     </button>
   </div>
-  <div class="hint">Enter – wyślij &nbsp;·&nbsp; Shift+Enter – nowa linia</div>
+  <div class="hint" id="hint">Enter – wyślij &nbsp;·&nbsp; Shift+Enter – nowa linia</div>
 </footer>
 
 <script>
-  const chatEl  = document.getElementById('chat');
+    const chatEl  = document.getElementById('chat');
   const inputEl = document.getElementById('input');
   const btnEl   = document.getElementById('btn');
+
+  // Przywróć historię po odświeżeniu strony
+  const HISTORIA_KEY = 'pwr_chat_historia';
+  function zapiszHistorie(pytanie, odpowiedz) {
+    const hist = JSON.parse(sessionStorage.getItem(HISTORIA_KEY) || '[]');
+    hist.push({ pytanie, odpowiedz, czas: new Date().toLocaleTimeString() });
+    if (hist.length > 20) hist.shift(); // max 20 wpisów
+    sessionStorage.setItem(HISTORIA_KEY, JSON.stringify(hist));
+  }
+  function wczytajHistorie() {
+    const hist = JSON.parse(sessionStorage.getItem(HISTORIA_KEY) || '[]');
+    if (hist.length === 0) return;
+    ukryjWitajke();
+    hist.forEach(({ pytanie, odpowiedz }) => {
+      dodajWiadomoscUzytkownika(pytanie);
+      // uproszczone odtworzenie — tylko tekst
+      const wrap = document.createElement('div');
+      wrap.className = 'message-wrap';
+      wrap.innerHTML = `<div class="msg-bot"><div class="bot-avatar">AI</div>
+        <div class="bot-content"><div class="bubble">${escHtml(odpowiedz)}</div></div></div>`;
+      chatEl.appendChild(wrap);
+    });
+    scrollDol();
+  }
+  window.addEventListener('load', wczytajHistorie);
 
   // auto-resize textarea
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+    const len = inputEl.value.length;
+    const hint = document.getElementById('hint');
+    if (len > 200) {
+      hint.textContent = `⚠ Za długie pytanie (${len}/200)`;
+      hint.style.color = 'var(--danger)';
+    } else {
+      hint.textContent = 'Enter – wyślij · Shift+Enter – nowa linia';
+      hint.style.color = '';
+    }
   });
 
   // Enter wyślij, Shift+Enter nowa linia
@@ -632,7 +672,7 @@
     } catch (err) {
       ukryjTyping();
       dodajOdpowiedzBota({
-        odpowiedz:   '⚠ Błąd połączenia z serwerem. Sprawdź czy app.py działa.',
+        odpowiedz:   '⚠ Serwer niedostępny. Odśwież stronę lub spróbuj za chwilę.\'',
         tytul:       null,
         podobienstwo: 0,
       });
@@ -659,6 +699,20 @@
   function scrollDol() {
 
     chatEl.scrollTop = chatEl.scrollHeight;
+  }
+
+  function wyczyscChat() {
+    sessionStorage.removeItem(HISTORIA_KEY);
+    chatEl.innerHTML = `<div class="welcome" id="welcome">
+      <div class="big">Zapytaj o <span>regulamin</span></div>
+      <p>Przeszukuję regulamin studiów PWr i zwracam właściwy paragraf wraz ze źródłem.</p>
+      <div class="chips">
+        <div class="chip" onclick="zadaj(this)">ile razy można podejść do egzaminu?</div>
+        <div class="chip" onclick="zadaj(this)">kiedy można wziąć urlop dziekański?</div>
+        <div class="chip" onclick="zadaj(this)">co grozi za nieobecności?</div>
+        <div class="chip" onclick="zadaj(this)">jak wznowić studia po skreśleniu?</div>
+        <div class="chip" onclick="zadaj(this)">jak oblicza się średnią ocen?</div>
+      </div></div>`;
   }
 
   function escHtml(s) {
