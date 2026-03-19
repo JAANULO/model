@@ -223,5 +223,8 @@ ROZSZERZENIA = {
     "ocena koncowa": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
     "waga pracy dyplomowej": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
     "wazy ocena": "oceny za studia srednia wazona wspolczynnik",
+    "ocena koncowa studiow": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
+    "jak liczona jest ocena koncowa": "oceny za studia srednia wazona wspolczynnik praca dyplomowa",
+    "ile wazy ocena pracy dyplomowej": "oceny za studia wspolczynnik praca dyplomowa",
 
 }

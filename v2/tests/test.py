@@ -14,7 +14,7 @@ except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from core.wyszukiwarka import Wyszukiwarka
 
-TESTY = [
+TESTY_LATWE = [
     # § 18 Egzaminy
     ("ile razy mozna podejsc do egzaminu",          "Egzamin"),
     ("co zrobic jak nie zdam egzaminu",             "Egzamin"),
@@ -92,6 +92,46 @@ TESTY = [
     ("jak wyglada praktyka zawodowa",               "Praktyk"),
     ("czy moge zaliczyc praktyke bez odbywania",    "Praktyk"),
 ]
+
+
+# Pytania bardziej potoczne / z literowkami
+TESTY_TRUDNE = [
+    ("egzamni",                                     "Egzamin"),
+    ("ak liczona jest ocena koncowa studiow",       "Oceny za"),
+    ("ile wazy ocena z pracy dyplomowej",           "Oceny za"),
+    ("jak policzyc koncowy wynik studiow",          "Oceny za"),
+    ("czy da sie miec obserwatora na egzaminie",    "komisyjny"),
+    ("co grozi jak nie chodze na zajecia",          "Realizacja"),
+    ("jak dlugo trwa semestr",                      "Organ"),
+    ("urlop?",                                      "Urlop"),
+    ("jak wznowic studia po skresleniu",            "Wznow"),
+    ("czy praca dyplomowa ma antyplagiat",          "Dyplom"),
+]
+
+
+# Testy graniczne: paragrafy, ktore model czesto myli
+TESTY_REGRESYJNE = [
+    # 19 vs 38
+    ("jaka jest skala ocen",                        "Skala"),
+    ("ile procent na piatke",                       "Skala"),
+    ("jak liczona jest ocena koncowa studiow",      "Oceny za"),
+    ("czy ocena pracy dyplomowej liczy sie do wyniku", "Oceny za"),
+
+    # 18 vs 20
+    ("ile dni miedzy terminami egzaminu",           "Egzamin"),
+    ("co to jest egzamin komisyjny",                "komisyjny"),
+    ("kto jest w komisji egzaminacyjnej",           "komisyjny"),
+
+    # 16 vs 33
+    ("co grozi za nieobecnosci",                    "Realizacja"),
+    ("co grozi za niezapisanie sie na zajecia",     "Skreśl"),
+]
+
+
+# Wybierz zakres testow:
+# TESTY = TESTY_LATWE
+# TESTY = TESTY_LATWE + TESTY_TRUDNE
+TESTY = TESTY_LATWE + TESTY_TRUDNE + TESTY_REGRESYJNE
 
 def main():
     BASE_DIR = os.path.join(os.path.dirname(__file__), "..")

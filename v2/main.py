@@ -36,7 +36,7 @@ EPOKI        = 5000
 LR           = 0.001
 MAKS_DLUGOSC = 512    # zwiększony – fragment regulaminu to ~400 znaków
 BATCH_SIZE   = 32
-PROG_PEWNOSCI = 0.14   # minimalny wynik BM25 żeby użyć kontekstu
+PROG_PEWNOSCI = 0.152 # minimalny wynik BM25 żeby użyć kontekstu
 
 # Pobieramy rozszerzenia z centralnego słownika
 from core.slowniki import ROZSZERZENIA
@@ -230,20 +230,24 @@ def rozszerz_pytanie(pytanie):
     poprawia trafność BM25 szczególnie dla krótkich i potocznych pytań.
     """
     pytanie_lower = pytanie.lower()
-    for fraza, rozszerzenie in ROZSZERZENIA.items():
-        if fraza in pytanie_lower:
-            return pytanie + " " + rozszerzenie
-    # dla bardzo krótkich pytań (1-2 słowa) dodaj wszystkie pasujące synonimy
+
+    # 1) znajdź wszystkie pasujące frazy i wybierz najdłuższą (najbardziej precyzyjną)
+    pasujace_frazy = [fraza for fraza in ROZSZERZENIA.keys() if fraza in pytanie_lower]
+    if pasujace_frazy:
+        najlepsza = max(pasujace_frazy, key=len)
+        return pytanie + " " + ROZSZERZENIA[najlepsza]
+
+    # 2) fallback dla bardzo krótkich pytań
     if len(pytanie.split()) <= 2:
         try:
             from core.slowniki import SYNONIMY
             slowo = pytanie.strip().lower().rstrip("?!")
-
             pasujace = list({v for k, v in SYNONIMY.items() if slowo in k})
             if pasujace:
                 return pytanie + " " + " ".join(pasujace)
         except ImportError:
             pass
+
     return pytanie
 
 
@@ -290,7 +294,8 @@ def generuj_odpowiedz(pytanie, historia, temperatura, wyszukiwarka, model, token
             0.0,
         )
 
-    wyniki = szukaj_z_rerankingiem(wyszukiwarka, pytanie_clean, n_wynikow=1)
+    wyniki = szukaj_z_rerankingiem(wyszukiwarka, pytanie_clean, n_wynikow=3)
+
     if not wyniki:
         return (
             "Nie znalazlem odpowiedniego paragrafu. Sprobuj zadac pytanie inaczej.",
@@ -298,11 +303,60 @@ def generuj_odpowiedz(pytanie, historia, temperatura, wyszukiwarka, model, token
             0.0,
         )
 
-    wynik = wyniki[0]
-    paragraf = wynik["tytul"]
-    podobienstwo = wynik["podobienstwo"]
+    # Intencje: rozdziel "ocena koncowa studiow" (par. 38) od "skala ocen/progi" (par. 19)
+    trans = str.maketrans("ąćęłńóśźż", "acelnoszz")
+    pyt = pytanie_clean.lower().translate(trans)
 
-    if podobienstwo <= PROG_PEWNOSCI:
+    intencja_38 = any(f in pyt for f in [
+        "ocena koncowa studiow",
+        "ocena koncowa",
+        "ostateczny wynik studiow",
+        "wynik studiow",
+        "waga pracy dyplomowej",
+        "wazy ocena",
+        "wspolczynnik",
+    ])
+    intencja_19 = any(f in pyt for f in [
+        "skala ocen",
+        "ile procent",
+        "prog",
+        "bardzo dobry",
+        "dostateczny",
+        "niedostateczny",
+    ])
+
+    for w in wyniki:
+        t = w["tytul"].lower()
+        bonus = 0.0
+        if intencja_38 and not intencja_19:
+            if "oceny za studia" in t:
+                bonus += 0.12
+            if "skala ocen" in t:
+                bonus -= 0.07
+        elif intencja_19 and not intencja_38:
+            if "skala ocen" in t:
+                bonus += 0.10
+            if "oceny za studia" in t:
+                bonus -= 0.05
+        w["_score"] = w["podobienstwo"] + bonus
+
+    wynik = max(wyniki, key=lambda x: x.get("_score", x["podobienstwo"]))
+
+    # Tie-breaker: przy intencji par. 38 wybierz go, jeśli jest blisko najlepszego wyniku
+    if intencja_38 and not intencja_19:
+        kandydat_38 = next((w for w in wyniki if "oceny za studia" in w["tytul"].lower()), None)
+        if kandydat_38:
+            best_score = wynik.get("_score", wynik["podobienstwo"])
+            score_38 = kandydat_38.get("_score", kandydat_38["podobienstwo"])
+            if best_score - score_38 <= 0.06:
+                wynik = kandydat_38
+
+    paragraf = wynik["tytul"]
+    podobienstwo = wynik.get("_score", wynik["podobienstwo"])
+
+    prog = 0.12 if (intencja_38 and not intencja_19) else PROG_PEWNOSCI
+
+    if podobienstwo <= prog:
         return (
             "Nie jestem pewien odpowiedzi na podstawie regulaminu. "
             "Doprecyzuj pytanie (np. podaj temat: egzamin, urlop, ocena koncowa).",

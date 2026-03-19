@@ -152,9 +152,15 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
             "Sprawdź w dziekanacie lub przejrzyj pełny regulamin."
         )
 
-    # dobierz wstęp do tematu pytania
+    # dobierz wstęp: najpierw po pytaniu, potem skoryguj po faktycznym tytule paragrafu
     temat = wykryj_temat(pytanie)
-    wstep = WSTEPY[temat]
+    wstep = WSTEPY.get(temat, WSTEPY["domyślny"])
+
+    tytul_lower = tytul.lower()
+    if "oceny za studia" in tytul_lower or "ostateczny wynik studiow" in tytul_lower:
+        wstep = "🎓 W kwestii oceny końcowej studiów regulamin mówi:\n"
+    elif "skala ocen" in tytul_lower:
+        wstep = "📊 W kwestii skali ocen regulamin mówi:\n"
 
     # wyciągnij kluczowe zdania i sformatuj jako punkty
     #zdania = wyciagnij_zdania(tresc, max_zdan=3)
