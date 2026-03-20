@@ -33,6 +33,7 @@ logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 # ── ładowanie wyszukiwarki raz przy starcie ───────────────────────────────────
 wyszukiwarka = None
+indeks_zdan  = None
 
 def zaladuj_wyszukiwarke():
     global wyszukiwarka
@@ -50,6 +51,9 @@ def zaladuj_wyszukiwarke():
         logger.addHandler(fh)
 
     wyszukiwarka = Wyszukiwarka(PLIK_BAZY)
+    global indeks_zdan
+    from core.indeks_zdan import IndeksZdan
+    indeks_zdan = IndeksZdan(PLIK_BAZY)
     logger.info("Wyszukiwarka zaladowana")
 
 # ── trasy ─────────────────────────────────────────────────────────────────────
@@ -58,12 +62,14 @@ def zaladuj_wyszukiwarke():
 def index():
     return render_template("index.html")
 
-
 @app.route("/zapytaj", methods=["POST"])
 def zapytaj():
-    dane    = request.get_json(force=True)
+    dane = request.get_json(force=True)
     pytanie = dane.get("pytanie", "").strip()
-    logger.info(f"PYTANIE: {pytanie}")
+    kontekst_tytul = dane.get("kontekst_tytul", None)  # poprzedni paragraf
+    kontekst_pytanie = dane.get("kontekst_pytanie", None)  # poprzednie pytanie
+    #print(f"DEBUG kontekst: tytul={kontekst_tytul}, pytanie={kontekst_pytanie}")
+    logger.info(f"PYTANIE: {pytanie} | kontekst: {kontekst_tytul}")
 
     if not pytanie:
         logger.warning("Puste pytanie od klienta")
@@ -74,6 +80,28 @@ def zapytaj():
 
     rozszerzenie = _znajdz_rozszerzenie(pytanie.lower())
     pytanie_do_szukania = (pytanie + " " + rozszerzenie).strip() if rozszerzenie else pytanie
+
+    # wykryj pytania kontekstowe – krótkie pytania nawiązujące do poprzedniego
+    SYGNALY_KONTEKSTU = [
+        "a co jak", "a jesli", "a jezeli", "co jak", "co jesli",
+        "a co jesli", "i co wtedy", "co wtedy", "a wtedy",
+        "a jak nie", "jak nie zdam", "jak obleje", "co jak nie",
+        "a czy moge", "czy wtedy", "co z tym", "i co z",
+    ]
+    pyt_ascii = pytanie.lower().translate(str.maketrans('ąćęłńóśźż', 'acelnoszzz'[:9]))
+    jest_kontekstowe = (
+            kontekst_tytul is not None and
+            len(pytanie.split()) <= 7 and
+            any(s in pyt_ascii for s in SYGNALY_KONTEKSTU)
+    )
+    print(
+        f"DEBUG jest_kontekstowe={jest_kontekstowe}, tytul={kontekst_tytul}, len={len(pytanie.split())}, ascii={pyt_ascii}")
+
+    # dla pytań kontekstowych – dodaj poprzedni paragraf do zapytania
+    if jest_kontekstowe and kontekst_pytanie:
+        pytanie_do_szukania = kontekst_pytanie + " " + pytanie
+        logger.info(f"KONTEKST: rozszerzam pytanie o '{kontekst_pytanie}'")
+        #print(f"DEBUG pytanie_do_szukania: {pytanie_do_szukania}")
 
     # rozszerzenie krótkich pytań
     if len(pytanie.split()) <= 2:
@@ -93,16 +121,77 @@ def zapytaj():
         if roznica < 0.03 and len(pytanie.split()) >= 6:
             wynik2 = wyniki[1]
 
-    if not wynik or wynik["podobienstwo"] < PROG_PEWNOSCI:
-        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}'")
+    prog = 0.10 if jest_kontekstowe else PROG_PEWNOSCI
+    #print(f"DEBUG prog={prog}, podobienstwo={wynik['podobienstwo'] if wynik else None}")
+    if not wynik or wynik["podobienstwo"] < prog:
+
+        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={wynik['podobienstwo'] if wynik else 0:.3f}")
+        top3 = wyszukiwarka.szukaj(pytanie_do_szukania, n_wynikow=3)
+        propozycje = [w["tytul"] for w in top3 if w["podobienstwo"] > 0.05]
+        tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
+        if propozycje:
+            tekst += f" Może chodzi o: {', '.join(propozycje[:2])}?"
         return jsonify({
-            "odpowiedz": "Nie znalazłem informacji na ten temat w regulaminie. Spróbuj zapytać inaczej.",
+            "odpowiedz": tekst,
             "tytul": None,
             "podobienstwo": 0,
             "tytul2": None,
         })
 
-    odp = formatuj_odpowiedz(pytanie, wynik)
+    from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
+
+    intencja = wykryj_intencje(pytanie)
+    zdania_wyniki = indeks_zdan.szukaj(pytanie, n_wynikow=5) if indeks_zdan else []
+
+    # klasyfikator intencji – musi być PRZED pętlą
+    intencja = wykryj_intencje(pytanie)
+
+    najlepsze_zdanie = None
+    for zw in zdania_wyniki:
+        if zw['tytul'] != wynik['tytul'] or zw['podobienstwo'] < 0.1:
+            continue
+        if intencja == "LICZBA":
+            # dla "ile dni" szukaj zdania z "odstep" zamiast liczby
+            p_lower = pytanie.lower()
+
+            if "ile dni" in p_lower or "miedzy terminami" in p_lower:
+
+                if any(s in zw['zdanie'].lower() for s in ["odstęp", "odstep", "pięciodniowym", "pieciodniowym"]):
+                    najlepsze_zdanie = zw['zdanie']
+                    break
+
+            else:
+                l = wyciagnij_liczbe(zw['zdanie'])
+                print(f"DEBUG zdanie: {zw['zdanie'][:80]} → L:{l}")
+                if l:
+                    najlepsze_zdanie = zw['zdanie']
+                    break
+
+        elif intencja == "TERMIN":
+
+            if wyciagnij_termin(zw['zdanie']):
+                najlepsze_zdanie = zw['zdanie']
+                break
+            # fallback dla "ile dni" – szukaj zdania z odstępem
+            p_lower = pytanie.lower()
+            if any(s in p_lower for s in ["ile dni", "miedzy terminami"]):
+                if any(s in zw['zdanie'].lower() for s in ["odstęp", "odstep", "pięciodniowym", "pieciodniowym"]):
+                    najlepsze_zdanie = zw['zdanie']
+                    break
+        else:
+            najlepsze_zdanie = zw['zdanie']
+            break
+
+    skrot = None
+
+    if najlepsze_zdanie:
+        skrot = generuj_skrot(intencja, pytanie, najlepsze_zdanie)
+
+    # dla SKUTEK i TAK_NIE jedno zdanie wystarczy
+    if intencja in ("SKUTEK", "TAK_NIE") and najlepsze_zdanie:
+        odp = formatuj_odpowiedz(pytanie, wynik, najlepsze_zdanie=najlepsze_zdanie, skrot=skrot, tylko_jedno=True)
+    else:
+        odp = formatuj_odpowiedz(pytanie, wynik, najlepsze_zdanie=najlepsze_zdanie, skrot=skrot)
 
 
     inicjalizuj()
@@ -123,6 +212,7 @@ def zapytaj():
             "tytul2":        wynik2["tytul"] if wynik2 else None,
             "podobienstwo2": wynik2["podobienstwo"] if wynik2 else None,
             "pytanie_id": pid,
+            "kontekst_tytul": odp["tytul"],  # przekaż do frontendu
         })
     # fallback dla błędów (odp to string)
     return jsonify({"odpowiedz": odp, "tytul": None, "podobienstwo": 0})
@@ -133,6 +223,7 @@ def feedback():
     dane = request.get_json(force=True)
     zapisz_feedback(dane["pytanie_id"], dane["ocena"])
     logger.info(f"FEEDBACK: pytanie_id={dane['pytanie_id']}, ocena={dane['ocena']}")
+    #print(f"DEBUG kontekst: tytul={kontekst_tytul}, pytanie={kontekst_pytanie}")
     return jsonify({"ok": True})
 
 

@@ -74,32 +74,49 @@ def wykryj_temat(pytanie):
             return temat
     return "domyślny"
 
-def wyciagnij_zdania(tresc, max_zdan=3, szukaj=None):
-    # usuń nagłówek paragrafu – np. "§ 18. Egzaminy"
+def _score_zdanie(zdanie: str, tokeny_pytania: list) -> int:
+    """Liczy ile tokenów pytania pojawia się w zdaniu – im więcej, tym lepiej."""
+    zdanie_lower = zdanie.lower()
+    return sum(1 for t in tokeny_pytania if t in zdanie_lower)
+
+
+def _score_zdanie(zdanie, tokeny_pytania):
+    """Liczy ile tokenów pytania pojawia się w zdaniu."""
+    zdanie_lower = zdanie.lower()
+    return sum(1 for t in tokeny_pytania if t in zdanie_lower)
+
+
+def wyciagnij_zdania(tresc, max_zdan=3, szukaj=None, pytanie_tokeny=None):
     tresc = re.sub(r'^§\s*\d+\.\s*\S[^\n\.]{0,60}\.?\s*', '', tresc).strip()
-    # dziel po kropce kończącej zdanie (nie po skrótach typu "ust.", "pkt.")
     tresc_split = re.sub(r'(?<!\bust)(?<!\bpkt)(?<!\bart)(?<!\bpoz)\.\s+(?=[A-ZŁŚŻŹ\d])', '|||', tresc)
     czesci = [c.strip() for c in tresc_split.split('|||') if len(c.strip()) > 30]
 
-    if szukaj:
-        trafione = [z for z in czesci if any(s in z.lower() for s in szukaj)]
-        czesci = trafione + [z for z in czesci if z not in trafione]
-
-    wynik = []
+    oczyszczone = []
     for z in czesci:
-        # usuń nagłówki rozdziałów sklejone z końcem zdania
         z = re.sub(r'\s*Rozdział\s+[IVX]+[^.]*\.?', '', z)
         z = z.strip().rstrip('.,;: ')
         z = re.sub(r'\([^)]{0,80}\)', '', z).strip()
         z = re.sub(r'\s+\d+$', '', z).strip()
         z = re.sub(r'\s+', ' ', z)
-        # pomiń za krótkie i za długie
+        if len(z) > 30:
+            oczyszczone.append(z)
 
-        if 30 < len(z):
-            wynik.append(z[:150].rsplit(' ', 1)[0] + ('…' if len(z) > 150 else ''))
+    # sortuj zdania po dopasowaniu do pytania – najlepsze na górę
+    if pytanie_tokeny:
+        oczyszczone.sort(
+            key=lambda z: _score_zdanie(z, pytanie_tokeny),
+            reverse=True
+        )
+    elif szukaj:
+        oczyszczone.sort(
+            key=lambda z: sum(1 for s in szukaj if s in z.lower()),
+            reverse=True
+        )
 
-        if len(wynik) >= max_zdan:
-            break
+    wynik = []
+    for z in oczyszczone[:max_zdan]:
+        # pokaż całe zdanie – urwane zdanie jest gorsze niż długie
+        wynik.append(z)
 
     return wynik
 
@@ -121,7 +138,7 @@ def wyciagnij_skale_ocen(tresc):
 
 # ── główna funkcja ────────────────────────────────────────────────────────────
 
-def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
+def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki, najlepsze_zdanie=None, skrot=None, tylko_jedno=False):
     """
     tworzy przyjazną odpowiedź na podstawie pytania i wyniku z wyszukiwarki.
 
@@ -172,6 +189,9 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
         "urlop":      ["urlop zdrowotny", "urlop dziekański", "udziela"],
     }
 
+    # tokenizuj pytanie lokalnie – unikamy importu cyklicznego przez lazy import
+    from core.wyszukiwarka import tokenizuj as _tokenizuj
+
     zdania = None
     if 'Skala ocen' in tytul or 'skala ocen' in tytul:
         zdania = [wyciagnij_skale_ocen(tresc)]
@@ -181,15 +201,39 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki):
             if fraza in pytanie.lower():
                 slowa = kluczowe
                 break
-        zdania = wyciagnij_zdania(tresc, max_zdan=3, szukaj=slowa)
+        tokeny_pyt = _tokenizuj(pytanie)
+        try:
+            from core.wyszukiwarka import tokenizuj as _tokenizuj
+        except ImportError:
+            from wyszukiwarka import tokenizuj as _tokenizuj
+        tokeny_pyt = _tokenizuj(pytanie)
+        zdania = wyciagnij_zdania(tresc, max_zdan=3, szukaj=slowa, pytanie_tokeny=tokeny_pyt)
 
     zacheta = random.choice(ZACHETY) if podobienstwo > 0.2 else None
 
+    # Pokaż "pełny paragraf" tylko jeśli punkty to < 40% treści
+    pokaz_pelna = len(" ".join(zdania if zdania else [])) < len(tresc) * 0.4
+
+    if najlepsze_zdanie and najlepsze_zdanie not in (zdania or []):
+        if tylko_jedno:
+            punkty = [najlepsze_zdanie]
+        else:
+            drugie = None
+            if zdania:
+                tokeny_pyt = pytanie.lower().split()
+                for z in zdania:
+                    if z != najlepsze_zdanie and sum(1 for t in tokeny_pyt if t in z.lower()) >= 2:
+                        drugie = z
+                        break
+            punkty = [najlepsze_zdanie] + ([drugie] if drugie else [])
+    else:
+        punkty = zdania[:1] if tylko_jedno else (zdania[:2] if zdania else [tresc[:200]])
+
     return {
-        "wstep":    wstep.strip(),
-        "punkty":   zdania if zdania else [tresc[:150]],
-        "tytul":    tytul,
-        "zacheta":  zacheta,
+        "wstep":        skrot if skrot else wstep.strip(),
+        "punkty":       [] if skrot else punkty,
+        "tytul":        tytul,
+        "zacheta":      zacheta,
         "podobienstwo": podobienstwo,
         "pelna_tresc":  tresc,
     }

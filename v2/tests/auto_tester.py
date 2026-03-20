@@ -12,11 +12,19 @@ Ustaw w pliku .env:  GEMINI_API_KEY=twój_klucz
 """
 
 import os, sys, json, time, re
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = (
+    os.path.dirname(CURRENT_DIR)
+    if os.path.basename(CURRENT_DIR).lower() == "tests"
+    else CURRENT_DIR
+)
+sys.path.insert(0, PROJECT_ROOT)
+
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 except ImportError:
     pass
 
@@ -36,11 +44,11 @@ if not API_KEY:
 
 klient = genai.Client(api_key=API_KEY)
 
-BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR      = PROJECT_ROOT
 LOGS_DIR      = os.path.join(BASE_DIR, "logs")
 os.makedirs(LOGS_DIR, exist_ok=True)  # Tworzy folder logs, jeśli nie istnieje
 
-LICZBA_PYTAN  = 1
+LICZBA_PYTAN  = 3
 PLIK_WYNIKOW  = os.path.join(LOGS_DIR, "auto_test_wyniki.json")
 PLIK_POPRAWEK = os.path.join(LOGS_DIR, "auto_test_poprawki.py")
 
@@ -194,8 +202,7 @@ def uruchom():
     print("  Gemini + Asystent Regulaminowy PWr")
     print("=" * 55)
 
-    BASE      = os.path.dirname(os.path.abspath(__file__))
-    PLIK_BAZY = os.path.join(BASE, "data", "baza_wiedzy.json")
+    PLIK_BAZY = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
 
     with open(PLIK_BAZY, encoding="utf-8") as f:
         baza = json.load(f)

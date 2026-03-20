@@ -10,13 +10,13 @@ import re
 import os
 
 try:
-    # uruchomienie jako pakiet: from core.wyszukiwarka import ...
     from .bd import pobierz_wspolczynniki_zbiorczo
     from .slowniki import SYNONIMY, ROZSZERZENIA
+    from .stemmer import stemuj
 except ImportError:
-    # uruchomienie pliku bezpośrednio: python core/wyszukiwarka.py
     from bd import pobierz_wspolczynniki_zbiorczo
     from slowniki import SYNONIMY, ROZSZERZENIA
+    from stemmer import stemuj
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 
@@ -84,11 +84,8 @@ def tokenizuj(tekst):
     tekst = tekst.lower()
     tekst = usun_polskie_znaki(tekst)
     tekst = re.sub(r'[^\w\s]', ' ', tekst)
-    # zachowaj liczby jako tokeny – np. "3" z "mam 3 nieobecności"
-    # (domyślnie \w już je zachowuje, ale usuwamy je przez len > 1 niżej)
 
     slowa = tekst.split()
-    # stopwords - slowa ktore nic nie znacza dla wyszukiwania
     stopwords = {
         'i', 'w', 'z', 'do', 'na', 'ze', 'nie', 'sie', 'jest',
         'to', 'a', 'o', 'lub', 'oraz', 'po', 'przez', 'przy',
@@ -238,24 +235,23 @@ class Wyszukiwarka:
         """
         dla podanego pytania zwraca n najbardziej pasujacych fragmentow.
         """
+        # tokenizuj BEZ stemmera – żeby ROZSZERZENIA mogły dopasować klucze
         tokeny_pytania = tokenizuj(pytanie)
         if not tokeny_pytania:
             return []
-        # korekta literówek – każde słowo porównywane ze słownikiem IDF
         tokeny_pytania = [popraw_literowke(t, self.idf) for t in tokeny_pytania]
 
-        # rozszerzanie zapytania – doklejamy unikalne słowa z właściwego paragrafu
         rozszerzenie = []
-
         for tok in tokeny_pytania:
             if tok in ROZSZERZENIA:
                 dodatkowe = tokenizuj(ROZSZERZENIA[tok])
                 rozszerzenie.extend(dodatkowe)
-            # sprawdź frazy dwuwyrazowe
+
         pytanie_lower = usun_polskie_znaki(pytanie.lower())
         for fraza, rozszerzenie_frazy in ROZSZERZENIA.items():
             if ' ' in fraza and fraza in pytanie_lower:
                 rozszerzenie.extend(tokenizuj(rozszerzenie_frazy))
+
         tokeny_pytania = tokeny_pytania + rozszerzenie
 
         tf_pytania    = oblicz_tf(tokeny_pytania)
