@@ -29,7 +29,7 @@ def inicjalizuj():
                 czas        TEXT DEFAULT (datetime('now','localtime'))
             );
 
-            CREATE TABLE IF NOT EXISTS feedback (
+CREATE TABLE IF NOT EXISTS feedback (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 pytanie_id  INTEGER REFERENCES pytania(id),
                 ocena       INTEGER NOT NULL,   -- 1 = dobre, -1 = złe
@@ -38,6 +38,22 @@ def inicjalizuj():
             );
         """)
 
+        # Prosta migracja: dodanie nowych kolumn, jeśli baza pochodzi ze starszej wersji
+        kolumny = [("tytul", "TEXT"), ("podobienstwo", "REAL"), ("baza", "TEXT DEFAULT 'studia'")]
+        for kolumna, typ in kolumny:
+            try:
+                conn.execute(f"ALTER TABLE pytania ADD COLUMN {kolumna} {typ}")
+            except sqlite3.OperationalError:
+                pass # Ignorujemy błąd, co oznacza, że kolumna już istnieje
+
+        # Migracja tabeli feedback
+        try:
+            conn.execute("ALTER TABLE feedback ADD COLUMN komentarz TEXT")
+        except sqlite3.OperationalError:
+            pass # Ignorujemy błąd, co oznacza, że kolumna już istnieje
+
+# Inicjalizacja bazy natychmiast przy załadowaniu modułu (przed jakimkolwiek zapytaniem)
+inicjalizuj()
 
 def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia"):
     with polacz() as conn:
@@ -76,6 +92,14 @@ def pobierz_wspolczynniki_zbiorczo():
         else:
             slownik[w['tytul']] = 1.0
     return slownik
+
+def pobierz_pytanie(pytanie_id):
+    """Pobiera zapisane pytanie na podstawie jego ID"""
+    with polacz() as conn:
+        return conn.execute(
+            "SELECT pytanie, tytul, podobienstwo FROM pytania WHERE id = ?",
+            (pytanie_id,)
+        ).fetchone()
 
 def pobierz_statystyki():
     """Pobiera statystyki sesji, wyświetlane pod komendą /statystyki"""

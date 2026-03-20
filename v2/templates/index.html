@@ -20,6 +20,20 @@
     --danger:    #ff4444;
   }
 
+  body.light-theme {
+    --bg:        #f5f5f7;
+    --surface:   #ffffff;
+    --surface2:  #f0f0f4;
+    --border:    #e5e5ea;
+    --accent:    #c8ff00;
+    --accent2:   #0077cc;
+    --text:      #1d1d1f;
+    --muted:     #70707b;
+    --user-bg:   #e8e8ed;
+    --bot-bg:    #ffffff;
+    --danger:    #e53935;
+  }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -463,8 +477,14 @@
     <h1>Asystent Regulaminowy</h1>
     <p>Politechnika Wrocławska · TF-IDF v2.0</p>
   </div>
+  <button id="btn-theme" onclick="przelaczMotyw()" title="Zmień motyw"
+    style="margin-left:auto;margin-right:8px;background:none;border:1px solid var(--border);
+    color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;
+    font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
+    ☀/☾ motyw
+  </button>
   <button id="btn-clear" onclick="wyczyscChat()" title="Wyczyść rozmowę"
-    style="margin-left:auto;background:none;border:1px solid var(--border);
+    style="background:none;border:1px solid var(--border);
     color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;
     font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
     ✕ wyczyść
@@ -503,6 +523,20 @@
     const chatEl  = document.getElementById('chat');
   const inputEl = document.getElementById('input');
   const btnEl   = document.getElementById('btn');
+
+  // Obsługa motywu jasny/ciemny
+  const THEME_KEY = 'pwr_chat_theme';
+  function ladujMotyw() {
+    if (localStorage.getItem(THEME_KEY) === 'light') {
+      document.body.classList.add('light-theme');
+    }
+  }
+  function przelaczMotyw() {
+    document.body.classList.toggle('light-theme');
+    const isLight = document.body.classList.contains('light-theme');
+    localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
+  }
+  ladujMotyw();
 
 // pamięć kontekstu – ostatni paragraf i pytanie
   let ostatniKontekstTytul   = null;

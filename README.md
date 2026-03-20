@@ -71,26 +71,31 @@ Instead of generating answers from memory (risking hallucinations), the system f
 - Levenshtein distance for typo correction (from scratch)
 - Dictionary of ~180 Polish synonyms and word forms
 - BM25 vector cache (`.pkl` file) — instant startup
-- Web interface (Flask + HTML/CSS/JS)
+- **Sentence-level index** — instead of returning whole paragraphs, finds the exact sentence with the answer
+- **Intent classifier** — detects question type (NUMBER / DATE / YES-NO / CONSEQUENCE / PROCEDURE) and returns a direct short answer, e.g. "You can take the exam **2 times**."
+- **Number and date extraction via regex** — returns concrete values instead of regulation text
+- **Conversation context memory** — follow-up questions like "and what if I fail?" refer to the previous paragraph
+- Web interface (Flask + HTML/CSS/JS) with mobile support
 - CLI interface with conversation history
 - **SQLite database** for statistics and feedback (`v2/data/asystent.db`)
 - Text logs to `v2/logs/log.txt` (GUI + CLI runtime events)
 - Feedback buttons 👍/👎 in GUI — saved to database
-- Automated tests (`tests/test.py`) — regression set of 50+ questions
+- Automated tests (`tests/test.py`) — regression set of 77 questions, **77/77 accuracy**
 - `/statystyki` endpoint — query count, average similarity, top paragraphs
-
 ---
 
 ## Test Results
 
 | Metric | Value |
 |---|---|
-| Test set | run `python tests/test.py` to see current set size |
-| Accuracy (correct paragraph) | run `python tests/test.py` |
+| Test set size | 77 questions |
+| Accuracy (correct paragraph) | **77/77 (100%)** |
 | Response time | < 50 ms |
 | Knowledge base size | 40 paragraphs |
-| BM25 vocabulary | ~400 unique words |
+| Sentence index size | 465 sentences |
+| BM25 vocabulary | ~2166 unique words |
 | Synonym dictionary entries | ~180 |
+| Query expansion entries | ~80 |
 
 ---
 
@@ -327,14 +332,17 @@ Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem gene
 - Korekcja literówek algorytmem Levenshteina (napisanym od zera)
 - Słownik ~180 synonimów i odmian dla języka polskiego
 - Cache wektorów BM25 (plik `.pkl`) — natychmiastowy start
-- Interfejs webowy (Flask + HTML/CSS/JS)
+- **Indeks na poziomie zdań** — zamiast zwracać cały paragraf, system znajduje konkretne zdanie z odpowiedzią
+- **Klasyfikator intencji** — wykrywa typ pytania (LICZBA / TERMIN / TAK-NIE / SKUTEK / PROCEDURA) i zwraca krótką bezpośrednią odpowiedź, np. „Możesz podejść do egzaminu **2 razy**."
+- **Ekstrakcja liczb i terminów przez regex** — konkretne wartości zamiast tekstu regulaminu
+- **Pamięć kontekstu rozmowy** — pytania następcze typu „a co jak nie zdam?" odnoszą się do poprzedniego paragrafu
+- Interfejs webowy (Flask + HTML/CSS/JS) z obsługą mobile
 - Interfejs CLI z historią rozmowy
 - **Baza SQLite** dla statystyk i feedbacku (`v2/data/asystent.db`)
 - Logi tekstowe do `v2/logs/log.txt` (zdarzenia uruchomieniowe GUI/CLI)
 - Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy
-- Testy automatyczne (`tests/test.py`) — zestaw regresyjny 50+ pytań
+- Testy automatyczne (`tests/test.py`) — zestaw regresyjny 77 pytań, **trafność 77/77**
 - Endpoint `/statystyki` — liczba pytań, średnie dopasowanie, top paragrafy
-
 
 ## Architektura projektu
 
@@ -376,12 +384,14 @@ Mini-GPT/
 
 | Metryka | Wartość |
 |---|---|
-| Zestaw testowy | uruchom `python tests/test.py`, aby zobaczyć aktualny rozmiar |
-| Trafność (właściwy paragraf) | uruchom `python tests/test.py` |
+| Rozmiar zestawu testowego | 77 pytań |
+| Trafność (właściwy paragraf) | **77/77 (100%)** |
 | Czas odpowiedzi | < 50 ms |
 | Rozmiar bazy | 40 paragrafów |
-| Słownik BM25 | ~400 unikalnych słów |
+| Rozmiar indeksu zdań | 465 zdań |
+| Słownik BM25 | ~2166 unikalnych słów |
 | Synonimów w słowniku | ~180 wpisów |
+| Wpisów rozszerzenia zapytań | ~80 |
 
 ---
 

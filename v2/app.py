@@ -10,7 +10,8 @@ from core.formatowanie import formatuj_odpowiedz
 from core.slowniki import ROZSZERZENIA, SYNONIMY
 import logging
 import os
-from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki
+from datetime import datetime
+from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki,pobierz_pytanie
 
 app = Flask(__name__)
 
@@ -123,9 +124,13 @@ def zapytaj():
 
     prog = 0.10 if jest_kontekstowe else PROG_PEWNOSCI
     #print(f"DEBUG prog={prog}, podobienstwo={wynik['podobienstwo'] if wynik else None}")
-    if not wynik or wynik["podobienstwo"] < prog:
 
-        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={wynik['podobienstwo'] if wynik else 0:.3f}")
+    if not wynik or wynik["podobienstwo"] < prog:
+        pod = wynik["podobienstwo"] if wynik else 0.0
+        inicjalizuj()
+        pid = zapisz_pytanie(pytanie, None, pod)
+
+        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={pod:.3f}, pid={pid}")
         top3 = wyszukiwarka.szukaj(pytanie_do_szukania, n_wynikow=3)
         propozycje = [w["tytul"] for w in top3 if w["podobienstwo"] > 0.05]
         tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
@@ -134,8 +139,9 @@ def zapytaj():
         return jsonify({
             "odpowiedz": tekst,
             "tytul": None,
-            "podobienstwo": 0,
+            "podobienstwo": pod,
             "tytul2": None,
+            "pytanie_id": pid
         })
 
     from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
@@ -215,15 +221,30 @@ def zapytaj():
             "kontekst_tytul": odp["tytul"],  # przekaż do frontendu
         })
     # fallback dla błędów (odp to string)
-    return jsonify({"odpowiedz": odp, "tytul": None, "podobienstwo": 0})
+    return jsonify({"odpowiedz": odp, "tytul": None, "podobienstwo": 0, "pytanie_id": pid})
 
 
 @app.route("/feedback", methods=["POST"])
 def feedback():
     dane = request.get_json(force=True)
-    zapisz_feedback(dane["pytanie_id"], dane["ocena"])
-    logger.info(f"FEEDBACK: pytanie_id={dane['pytanie_id']}, ocena={dane['ocena']}")
-    #print(f"DEBUG kontekst: tytul={kontekst_tytul}, pytanie={kontekst_pytanie}")
+    pid = dane["pytanie_id"]
+    ocena = dane["ocena"]
+    zapisz_feedback(pid, ocena)
+    logger.info(f"FEEDBACK: pytanie_id={pid}, ocena={ocena}")
+
+    # Dodatkowy log do pliku dla negatywnych ocen z niską pewnością
+    if ocena == -1:
+        rekord = pobierz_pytanie(pid)
+        if rekord and rekord["podobienstwo"] is not None and rekord["podobienstwo"] < 0.2:
+            log_dir = os.path.join(BASE_DIR, "v2", "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            log_path = os.path.join(log_dir, "do_poprawy.txt")
+
+            with open(log_path, "a", encoding="utf-8") as f:
+                czas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(
+                    f"[{czas}] Pytanie: '{rekord['pytanie']}' | Podobieństwo: {rekord['podobienstwo']:.3f} | Tytuł: {rekord['tytul']}\n")
+
     return jsonify({"ok": True})
 
 
