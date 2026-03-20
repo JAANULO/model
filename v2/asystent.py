@@ -15,7 +15,7 @@ from core.formatowanie import formatuj_odpowiedz
 BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
 PLIK_BAZY = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
 PLIK_LOG  = os.path.join(BASE_DIR, "logs", "log.txt")
-PROG_PEWNOSCI = 0.11
+PROG_PEWNOSCI = 0.15
 
 os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
 

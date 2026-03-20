@@ -11,12 +11,20 @@ from core.slowniki import ROZSZERZENIA, SYNONIMY
 import logging
 import os
 from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki
+
 app = Flask(__name__)
+
+def _znajdz_rozszerzenie(pytanie_lower: str) -> str:
+    """Zwraca rozszerzenie dla pierwszej pasującej frazy lub pusty string."""
+    for fraza, rozszerzenie in ROZSZERZENIA.items():
+        if fraza in pytanie_lower:
+            return rozszerzenie
+    return ""
 
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
 PLIK_BAZY     = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
 PLIK_LOG      = os.path.join(BASE_DIR, "logs", "log.txt")
-PROG_PEWNOSCI = 0.11
+PROG_PEWNOSCI = 0.15
 
 logger = logging.getLogger("asystent")
 logger.setLevel(logging.INFO)
@@ -64,11 +72,8 @@ def zapytaj():
     if wyszukiwarka is None:
         return jsonify({"blad": "Wyszukiwarka nie załadowana"}), 500
 
-    pytanie_do_szukania = pytanie
-    for fraza, rozszerzenie in ROZSZERZENIA.items():
-        if fraza in pytanie.lower():
-            pytanie_do_szukania = pytanie + " " + rozszerzenie
-            break
+    rozszerzenie = _znajdz_rozszerzenie(pytanie.lower())
+    pytanie_do_szukania = (pytanie + " " + rozszerzenie).strip() if rozszerzenie else pytanie
 
     # rozszerzenie krótkich pytań
     if len(pytanie.split()) <= 2:
@@ -84,7 +89,8 @@ def zapytaj():
     wynik2 = None
     if len(wyniki) == 2:
         roznica = wyniki[0]["podobienstwo"] - wyniki[1]["podobienstwo"]
-        if roznica < 0.05 or len(pytanie.split()) >= 8:
+        # drugi paragraf tylko gdy: blisko pierwszego ORAZ długie pytanie (więcej kontekstu)
+        if roznica < 0.03 and len(pytanie.split()) >= 6:
             wynik2 = wyniki[1]
 
     if not wynik or wynik["podobienstwo"] < PROG_PEWNOSCI:
@@ -130,8 +136,13 @@ def feedback():
     return jsonify({"ok": True})
 
 
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "dev-token-zmien-mnie")
+
 @app.route("/statystyki")
 def statystyki():
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        return jsonify({"blad": "Brak dostępu"}), 403
     return jsonify(pobierz_statystyki())
 
 

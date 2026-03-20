@@ -74,13 +74,12 @@ def wykryj_temat(pytanie):
             return temat
     return "domyślny"
 
-
 def wyciagnij_zdania(tresc, max_zdan=3, szukaj=None):
-    # usuń nagłówek paragrafu – np. "§ 18. Egzaminy" lub "§ 11. Organizacja..."
+    # usuń nagłówek paragrafu – np. "§ 18. Egzaminy"
     tresc = re.sub(r'^§\s*\d+\.\s*\S[^\n\.]{0,60}\.?\s*', '', tresc).strip()
-    tresc = re.sub(r'\s+\d+\.\s+', ' CIĘCIE ', tresc)
-    tresc = re.sub(r'^\d+\.\s+', '', tresc)
-    czesci = tresc.split('CIĘCIE')
+    # dziel po kropce kończącej zdanie (nie po skrótach typu "ust.", "pkt.")
+    tresc_split = re.sub(r'(?<!\bust)(?<!\bpkt)(?<!\bart)(?<!\bpoz)\.\s+(?=[A-ZŁŚŻŹ\d])', '|||', tresc)
+    czesci = [c.strip() for c in tresc_split.split('|||') if len(c.strip()) > 30]
 
     if szukaj:
         trafione = [z for z in czesci if any(s in z.lower() for s in szukaj)]

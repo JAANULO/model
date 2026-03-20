@@ -49,18 +49,25 @@ def levenshtein(a, b):
     return poprzedni[-1]
 
 
+# Cache korekcji literówek – raz obliczone, zapamiętane na całą sesję
+_cache_literowek: dict = {}
+
 def popraw_literowke(slowo, slownik, max_odleglosc=1):
     """
     jeśli słowo nie jest w słowniku, znajdź najbliższe przez Levenshteina.
-    max_odleglosc=1 oznacza max 1 literówka – np. 'egzamni' → 'egzamin'
+    Wynik jest cachowany – to samo słowo nie jest przeliczane ponownie.
     """
     if slowo in slownik:
         return slowo
-    kandydaci = [s for s in slownik if abs(len(s) - len(slowo)) <= max_odleglosc]
+    if slowo in _cache_literowek:
+        return _cache_literowek[slowo]
+    # filtruj kandydatów po długości PRZED Levenshteinem (duże przyspieszenie)
+    kandydaci = [s for s in slownik
+                 if abs(len(s) - len(slowo)) <= max_odleglosc and s[0] == slowo[0]]
     najlepszy = min(kandydaci, key=lambda s: levenshtein(slowo, s), default=None)
-    if najlepszy and levenshtein(slowo, najlepszy) <= max_odleglosc:
-        return najlepszy
-    return slowo
+    wynik = najlepszy if (najlepszy and levenshtein(slowo, najlepszy) <= max_odleglosc) else slowo
+    _cache_literowek[slowo] = wynik
+    return wynik
 
 
 def normalizuj(slowo):

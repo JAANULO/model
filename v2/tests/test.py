@@ -33,6 +33,7 @@ TESTY_LATWE = [
 
     # § 16 Realizacja zajęć / nieobecności
     ("co grozi za nieobecnosci",                    "Realizacja"),
+    ("co grozi jak nie chodze na zajecia",          "Realizacja"),
     ("ile nieobecnosci mozna miec",                 "Realizacja"),
     ("mam 3 nieobecnosci czy to duzo",              "Realizacja"),
     ("jak usprawiedliwic nieobecnosc",              "Realizacja"),
@@ -84,9 +85,13 @@ TESTY_LATWE = [
     ("kiedy konczy sie sesja letnia",               "Organ"),
     ("ile dni trwa sesja egzaminacyjna",            "Organ"),
 
-    # § 38 Oceny za studia
+# § 38 Oceny za studia
     ("jak oblicza sie srednia ocen",                "Skala ocen"),
     ("kiedy dostane wyróznienie",                   "Oceny za"),
+    ("jak liczona jest ocena koncowa studiow",      "Oceny za"),
+    ("ile wazy ocena z pracy dyplomowej",           "Oceny za"),
+    ("jak policzyc koncowy wynik studiow",          "Oceny za"),
+    ("czy ocena pracy dyplomowej liczy sie do wyniku", "Oceny za"),
 
     # § 23 Praktyki
     ("jak wyglada praktyka zawodowa",               "Praktyk"),
