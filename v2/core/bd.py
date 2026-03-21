@@ -26,6 +26,7 @@ def inicjalizuj():
                 tytul       TEXT,
                 podobienstwo REAL,
                 baza        TEXT DEFAULT 'studia',
+                odpowiedz   TEXT,
                 czas        TEXT DEFAULT (datetime('now','localtime'))
             );
 
@@ -39,7 +40,8 @@ CREATE TABLE IF NOT EXISTS feedback (
         """)
 
         # Prosta migracja: dodanie nowych kolumn, jeśli baza pochodzi ze starszej wersji
-        kolumny = [("tytul", "TEXT"), ("podobienstwo", "REAL"), ("baza", "TEXT DEFAULT 'studia'")]
+        kolumny = [("tytul", "TEXT"), ("podobienstwo", "REAL"), ("baza", "TEXT DEFAULT 'studia'"),
+                   ("odpowiedz", "TEXT")]
         for kolumna, typ in kolumny:
             try:
                 conn.execute(f"ALTER TABLE pytania ADD COLUMN {kolumna} {typ}")
@@ -55,11 +57,11 @@ CREATE TABLE IF NOT EXISTS feedback (
 # Inicjalizacja bazy natychmiast przy załadowaniu modułu (przed jakimkolwiek zapytaniem)
 inicjalizuj()
 
-def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia"):
+def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia", odpowiedz=None):
     with polacz() as conn:
         cur = conn.execute(
-            "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza) VALUES (?,?,?,?)",
-            (pytanie, tytul, podobienstwo, baza)
+            "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza, odpowiedz) VALUES (?,?,?,?,?)",
+            (pytanie, tytul, podobienstwo, baza, odpowiedz)
         )
         return cur.lastrowid   # zwraca ID do feedbacku
 
@@ -97,7 +99,7 @@ def pobierz_pytanie(pytanie_id):
     """Pobiera zapisane pytanie na podstawie jego ID"""
     with polacz() as conn:
         return conn.execute(
-            "SELECT pytanie, tytul, podobienstwo FROM pytania WHERE id = ?",
+            "SELECT pytanie, tytul, podobienstwo, odpowiedz FROM pytania WHERE id = ?",
             (pytanie_id,)
         ).fetchone()
 
@@ -117,9 +119,24 @@ def pobierz_statystyki():
             WHERE f.ocena = -1
             ORDER BY f.czas DESC LIMIT 10
         """).fetchall()
+        dzienne = conn.execute("""
+            SELECT date (czas) as dzien, COUNT (*) as liczba
+            FROM pytania
+            GROUP BY dzien
+            ORDER BY dzien ASC
+            LIMIT 14
+        """).fetchall()
+        ostatnie = conn.execute("""
+            SELECT id, czas, pytanie, odpowiedz, podobienstwo
+            FROM pytania
+            ORDER BY czas DESC LIMIT 1000
+            """).fetchall()
+
     return {
         "pytania":             total,
         "srednie_podobienstwo": round((avg or 0)*100, 1),
         "top_paragrafy":       [dict(w) for w in top],
-        "zle_odpowiedzi":      [dict(z) for z in zle]
+        "zle_odpowiedzi":      [dict(z) for z in zle],
+        "pytania_dzienne": [dict(d) for d in dzienne],
+        "ostatnie_pytania": [dict(o) for o in ostatnie]
     }

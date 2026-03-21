@@ -8,6 +8,7 @@ import json
 import math
 import re
 import os
+import glob
 
 try:
     from .bd import pobierz_wspolczynniki_zbiorczo
@@ -206,15 +207,53 @@ def podobienstwo_cosinusowe(wektor_a, wektor_b):
 class Wyszukiwarka:
 
     def __init__(self, plik_bazy):
-        import pickle, os
-        cache = plik_bazy.replace(".json", "_cache.pkl")
+        import pickle
 
-        print("Ladowanie bazy wiedzy...")
-        with open(plik_bazy, 'r', encoding='utf-8') as f:
-            self.fragmenty = json.load(f)
+        if os.path.isdir(plik_bazy):
+            self.data_dir = plik_bazy
+            json_files = sorted(glob.glob(os.path.join(self.data_dir, "*.json")))
+            cache = os.path.join(self.data_dir, "baza_wiedzy_multi_cache.pkl")
+        else:
+            self.data_dir = os.path.dirname(os.path.abspath(plik_bazy))
+            json_files = [plik_bazy]
+            cache = plik_bazy.replace(".json", "_cache.pkl")
 
-        # użyj cache jeśli baza się nie zmieniła
-        baza_mtime = os.path.getmtime(plik_bazy)
+        if not json_files:
+            raise FileNotFoundError(f"Brak plikow JSON do indeksowania w: {plik_bazy}")
+
+        print("Ladowanie bazy wiedzy... (Wersja z szybkimi paragrafami!)")
+        self.fragmenty = []
+        aktywne_pliki = []
+        for sciezka in json_files:
+            try:
+                with open(sciezka, 'r', encoding='utf-8') as f:
+                    dane = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
+
+            if not isinstance(dane, list):
+                continue
+
+            nazwa_zrodla = os.path.basename(sciezka)
+            fragmenty_z_pliku = 0
+            for frag in dane:
+                if not isinstance(frag, dict):
+                    continue
+                if "tytul" not in frag or "tresc" not in frag:
+                    continue
+                rekord = dict(frag)
+                rekord["zrodlo"] = frag.get("zrodlo", nazwa_zrodla)
+                self.fragmenty.append(rekord)
+                fragmenty_z_pliku += 1
+
+            if fragmenty_z_pliku > 0:
+                aktywne_pliki.append(sciezka)
+
+        if not self.fragmenty:
+            raise FileNotFoundError(f"Nie znaleziono poprawnych fragmentow (tytul+tresc) w JSON: {plik_bazy}")
+
+        # użyj cache jeśli żaden plik źródłowy nie jest nowszy
+        baza_mtime = max(os.path.getmtime(p) for p in aktywne_pliki)
         if os.path.exists(cache) and os.path.getmtime(cache) > baza_mtime:
             print("Wczytywanie indeksu z cache...")
             with open(cache, 'rb') as f:
@@ -231,10 +270,38 @@ class Wyszukiwarka:
         print(f"   Zaindeksowano {len(self.fragmenty)} fragmentow")
         print(f"   Slownik: {len(self.idf)} unikalnych slow\n")
 
+    @staticmethod
+    def wykryj_numer_paragrafu(pytanie):
+        """Wykrywa numer paragrafu z pytania (np. §18, paragraf 18)."""
+        pytanie_czyste = usun_polskie_znaki(pytanie.lower())
+        dopasowanie = re.search(r'(?:§\s*|paragraf(?:ie|u|em|owi|ach)?\s+)(\d+)', pytanie_czyste)
+        return dopasowanie.group(1) if dopasowanie else None
+
+    def pobierz_paragraf_po_numerze(self, numer):
+        """Zwraca fragment paragrafu po numerze lub None, bez liczenia BM25."""
+        numer = str(numer)
+        for frag in self.fragmenty:
+            liczby_w_tytule = re.findall(r'\d+', frag['tytul'])
+            if liczby_w_tytule and liczby_w_tytule[0] == numer:
+                return {
+                    "tytul": frag['tytul'],
+                    "tresc": frag['tresc'],
+                    "podobienstwo": 1.0,
+                    "zrodlo": frag.get('zrodlo'),
+                }
+        return None
+
     def szukaj(self, pytanie, n_wynikow=1):
         """
         dla podanego pytania zwraca n najbardziej pasujacych fragmentow.
         """
+        # Szybka ścieżka: zapytanie o konkretny paragraf bez BM25
+        numer_paragrafu = self.wykryj_numer_paragrafu(pytanie)
+        if numer_paragrafu:
+            trafienie = self.pobierz_paragraf_po_numerze(numer_paragrafu)
+            if trafienie:
+                return [trafienie]
+
         # tokenizuj BEZ stemmera – żeby ROZSZERZENIA mogły dopasować klucze
         tokeny_pytania = tokenizuj(pytanie)
         if not tokeny_pytania:
@@ -280,7 +347,8 @@ class Wyszukiwarka:
             {
                 "tytul":        self.fragmenty[i]['tytul'],
                 "tresc":        self.fragmenty[i]['tresc'],
-                "podobienstwo": round(podobienstwo, 4)
+                "podobienstwo": round(podobienstwo, 4),
+                "zrodlo":       self.fragmenty[i].get('zrodlo'),
             }
             for podobienstwo, i in wyniki[:n_wynikow]
         ]

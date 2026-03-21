@@ -65,23 +65,26 @@ An extension of v1 with an information retrieval system for the PWr study regula
 Instead of generating answers from memory (risking hallucinations), the system first retrieves the correct regulation paragraph and then formulates a response.
 
 **Features:**
-- PDF regulation parser (`pdfplumber`) — splits the document into 40 paragraphs
+- PDF parser (`pdfplumber`) for multiple files from `v2/data/` → separate JSON per document
 - **BM25** algorithm from scratch (replaces TF-IDF — better accuracy for varying paragraph lengths)
 - Cosine similarity for result ranking
 - Levenshtein distance for typo correction (from scratch)
 - Dictionary of ~180 Polish synonyms and word forms
 - BM25 vector cache (`.pkl` file) — instant startup
+- In-memory answer cache in API (`/zapytaj`) — TTL 1h, max 500 entries
+- Direct paragraph retrieval by number (`§18`, `paragraph 18`) without BM25 recomputation
 - **Sentence-level index** — instead of returning whole paragraphs, finds the exact sentence with the answer
 - **Intent classifier** — detects question type (NUMBER / DATE / YES-NO / CONSEQUENCE / PROCEDURE) and returns a direct short answer, e.g. "You can take the exam **2 times**."
 - **Number and date extraction via regex** — returns concrete values instead of regulation text
 - **Conversation context memory** — follow-up questions like "and what if I fail?" refer to the previous paragraph
-- Web interface (Flask + HTML/CSS/JS) with mobile support
+- Web interface (Flask + HTML/CSS/JS) with mobile support, light/dark mode toggle, sidebar with last 10 queries, and PDF export of chat
 - CLI interface with conversation history
 - **SQLite database** for statistics and feedback (`v2/data/asystent.db`)
 - Text logs to `v2/logs/log.txt` (GUI + CLI runtime events)
-- Feedback buttons 👍/👎 in GUI — saved to database
+- Feedback buttons 👍/👎 in GUI — saved to database; low-confidence negative feedback is appended to `v2/logs/do_poprawy.txt`
 - Automated tests (`tests/test.py`) — regression set of 77 questions, **77/77 accuracy**
-- `/statystyki` endpoint — query count, average similarity, top paragraphs
+- `/historia` endpoint — last 10 questions from SQLite
+- `/admin` dashboard (Chart.js) secured by `ADMIN_TOKEN`
 ---
 
 ## Test Results
@@ -114,7 +117,7 @@ Mini-GPT/
 └── v2/                         ← regulatory assistant
 ├── main.py                 # entry point: training + CLI loop
 ├── app.py                  # Flask server (GUI)
-├── parser.py               # PDF → data/baza_wiedzy.json
+├── parser.py               # PDFs in data/ → JSON knowledge files
 ├── asystent.py             # standalone CLI interface
 ├── requirements.txt        # Python dependencies
 │
@@ -124,14 +127,16 @@ Mini-GPT/
 │   └── bd.py               # SQLite: stats, feedback
 │
 ├── data/
-│   ├── baza_wiedzy.json    # 40 regulation paragraphs (auto-generated)
-│   └── baza_wiedzy_cache.pkl  # BM25 vector cache (auto-generated)
+│   ├── *.pdf               # source documents
+│   ├── *.json              # parsed knowledge files (one per document)
+│   └── *_cache.pkl         # BM25 / sentence index caches
 │
 ├── tests/
 │   └── test.py             # automated tests (regression set, 50+ questions)
 │
 └── templates/
-└── index.html          # web interface
+    ├── index.html          # web interface
+    └── admin.html          # stats dashboard (Chart.js)
 ```
 
 ---
@@ -169,7 +174,7 @@ On subsequent runs it loads the model from cache (training is skipped).
 
 ### Version 2.0 — Regulatory Assistant
 
-**Step 1 — generate the knowledge base** (once, or when the PDF changes):
+**Step 1 — generate the knowledge base** (once, or when PDFs in `v2/data/` change):
 
 ```bash
 cd v2
@@ -203,8 +208,8 @@ python tests/debug_parser.py
 
 ### Troubleshooting (v2)
 
-- `FileNotFoundError: ... baza_wiedzy.json`
-  - Run `python parser.py` in `v2` to generate `v2/data/baza_wiedzy.json`.
+- `FileNotFoundError` for missing knowledge files
+  - Run `python parser.py` in `v2` to parse PDFs from `v2/data/` into JSON files.
 - Red underline on `from core...` in IDE
   - In JetBrains: mark `v2` as **Sources Root** and use the same interpreter as runtime.
 - Relative import error (`attempted relative import with no known parent package`)
@@ -326,23 +331,26 @@ Rozbudowa v1 o system wyszukiwania informacji z regulaminu studiów Politechniki
 Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem generuje odpowiedź.
 
 **Co zawiera:**
-- Parser PDF regulaminu (`pdfplumber`) — dzieli dokument na 40 paragrafów
+- Parser PDF (`pdfplumber`) dla wielu plików z `v2/data/` → osobne JSON dla dokumentów
 - Algorytm **BM25** napisany od zera (zastąpił TF-IDF — lepsza trafność dla różnej długości paragrafów)
 - Podobieństwo cosinusowe do rankingu wyników
 - Korekcja literówek algorytmem Levenshteina (napisanym od zera)
 - Słownik ~180 synonimów i odmian dla języka polskiego
 - Cache wektorów BM25 (plik `.pkl`) — natychmiastowy start
+- Cache odpowiedzi w API (`/zapytaj`) — TTL 1h, max 500 wpisów
+- Bezpośrednie trafienie paragrafu po numerze (`§18`, `paragraf 18`) bez liczenia BM25
 - **Indeks na poziomie zdań** — zamiast zwracać cały paragraf, system znajduje konkretne zdanie z odpowiedzią
 - **Klasyfikator intencji** — wykrywa typ pytania (LICZBA / TERMIN / TAK-NIE / SKUTEK / PROCEDURA) i zwraca krótką bezpośrednią odpowiedź, np. „Możesz podejść do egzaminu **2 razy**."
 - **Ekstrakcja liczb i terminów przez regex** — konkretne wartości zamiast tekstu regulaminu
 - **Pamięć kontekstu rozmowy** — pytania następcze typu „a co jak nie zdam?" odnoszą się do poprzedniego paragrafu
-- Interfejs webowy (Flask + HTML/CSS/JS) z obsługą mobile
+- Interfejs webowy (Flask + HTML/CSS/JS) z obsługą mobile, przełącznikiem jasny/ciemny, panelem historii i eksportem rozmowy do PDF
 - Interfejs CLI z historią rozmowy
 - **Baza SQLite** dla statystyk i feedbacku (`v2/data/asystent.db`)
 - Logi tekstowe do `v2/logs/log.txt` (zdarzenia uruchomieniowe GUI/CLI)
-- Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy
+- Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy; słabe odpowiedzi trafiają do `v2/logs/do_poprawy.txt`
 - Testy automatyczne (`tests/test.py`) — zestaw regresyjny 77 pytań, **trafność 77/77**
-- Endpoint `/statystyki` — liczba pytań, średnie dopasowanie, top paragrafy
+- Endpoint `/historia` — ostatnie 10 pytań z SQLite
+- Dashboard `/admin` (Chart.js) zabezpieczony tokenem `ADMIN_TOKEN`
 
 ## Architektura projektu
 
@@ -359,7 +367,7 @@ Mini-GPT/
 └── v2/                         ← asystent regulaminowy
     ├── main.py                 # punkt wejścia: trening + pętla CLI
     ├── app.py                  # serwer Flask (GUI)
-    ├── parser.py               # PDF → data/baza_wiedzy.json
+    ├── parser.py               # PDF-y z data/ → pliki JSON wiedzy
     ├── asystent.py             # samodzielny interfejs CLI
     ├── requirements.txt        # zależności Pythona
     │
@@ -369,14 +377,16 @@ Mini-GPT/
     │   └── bd.py               # SQLite: statystyki, feedback
     │
     ├── data/
-    │   ├── baza_wiedzy.json    # 40 paragrafów regulaminu (auto-generowany)
-    │   └── baza_wiedzy_cache.pkl  # cache wektorów BM25 (auto-generowany)
+    │   ├── *.pdf               # dokumenty źródłowe
+    │   ├── *.json              # baza wiedzy per dokument
+    │   └── *_cache.pkl         # cache indeksów BM25 i zdań
     │
     ├── tests/
     │   └── test.py             # testy automatyczne (zestaw regresyjny, 50+ pytań)
     │
     └── templates/
-        └── index.html          # interfejs webowy
+        ├── index.html          # interfejs webowy
+        └── admin.html          # dashboard statystyk
 ```
 ---
 
@@ -429,7 +439,7 @@ Przy kolejnych uruchomieniach wczytuje model z cache (trening pomijany).
 
 ### Wersja 2.0 — Asystent Regulaminowy
 
-**Krok 1 — wygeneruj bazę wiedzy** (tylko raz, lub gdy zmieni się PDF):
+**Krok 1 — wygeneruj bazę wiedzy** (tylko raz, lub gdy zmienią się PDF-y w `v2/data/`):
 
 ```bash
 cd v2
@@ -463,8 +473,8 @@ python tests/debug_parser.py
 
 ### Rozwiązywanie problemów (v2)
 
-- `FileNotFoundError: ... baza_wiedzy.json`
-  - Uruchom `python parser.py` w katalogu `v2`, aby wygenerować `v2/data/baza_wiedzy.json`.
+- `FileNotFoundError` dla plików wiedzy
+  - Uruchom `python parser.py` w katalogu `v2`, aby sparsować PDF-y z `v2/data/` do JSON.
 - Czerwone podkreślenie `from core...` w IDE
   - W JetBrains oznacz `v2` jako **Sources Root** i użyj tego samego interpretera co przy uruchomieniu.
 - Błąd importu względnego (`attempted relative import with no known parent package`)

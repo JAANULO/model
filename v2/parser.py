@@ -7,6 +7,7 @@ import pdfplumber
 import json
 import re
 import os
+import glob
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -69,9 +70,13 @@ def zapisz_baze(fragmenty, sciezka):
         json.dump(fragmenty, f, ensure_ascii=False, indent=2)
 
 
-def main():
-    print("Wczytywanie PDF...")
-    tekst = wczytaj_pdf(PLIK_PDF)
+def przetworz_pdf(sciezka_pdf: str):
+    nazwa_pdf = os.path.basename(sciezka_pdf)
+    nazwa_json = os.path.splitext(nazwa_pdf)[0] + ".json"
+    sciezka_json = os.path.join(DATA_DIR, nazwa_json)
+
+    print(f"\nWczytywanie PDF: {nazwa_pdf}")
+    tekst = wczytaj_pdf(sciezka_pdf)
     print(f"   Wczytano {len(tekst)} znakow")
 
     print("Czyszczenie tekstu...")
@@ -79,35 +84,33 @@ def main():
 
     print("Dzielenie na fragmenty...")
     fragmenty = podziel_na_fragmenty(tekst)
-    print(f"   Podzielono na {len(fragmenty)} fragmentow\n")
+    print(f"   Podzielono na {len(fragmenty)} fragmentow")
 
-    print("Przykladowe fragmenty:")
-    for i, f in enumerate(fragmenty[:5]):
-        print(f"\n  [{i}] Tytul: {f['tytul'][:70]}")
-        print(f"       Tresc: {f['tresc'][:200]}...")
+    for frag in fragmenty:
+        frag["zrodlo"] = nazwa_json
 
-    print(f"\nZapisywanie do {PLIK_WYJSCIOWY}...")
-    zapisz_baze(fragmenty, PLIK_WYJSCIOWY)
-    print("Gotowe!")
+    zapisz_baze(fragmenty, sciezka_json)
+    print(f"Zapisano do: {os.path.abspath(sciezka_json)}")
+    return nazwa_pdf, fragmenty
 
-    #for f in fragmenty:
-        #if '34' in f['tytul']:
-            #print(f"§34 długość: {len(f['tresc'])}")
-            #print(f"§34 treść: {f['tresc'][:200]}")
 
-    print("Zapisano do:", os.path.abspath(PLIK_WYJSCIOWY))
+def main():
+    pdf_files = sorted(glob.glob(os.path.join(DATA_DIR, "*.pdf")))
+    if not pdf_files:
+        raise FileNotFoundError(f"Brak plikow PDF w katalogu: {DATA_DIR}")
 
-    # walidacja – wypisz paragrafy z podejrzanie krótką treścią
-    krotkie = [f for f in fragmenty if len(f['tresc']) < 200]
-    if krotkie:
-        print(f"\n⚠️  {len(krotkie)} paragrafów z bardzo krótką treścią (<200 znaków):")
-        for f in krotkie:
-            print(f"   • {f['tytul'][:60]} — {len(f['tresc'])} znaków")
-        print("   Sprawdź je ręcznie w baza_wiedzy.json\n")
-    else:
-        print("✓ Wszystkie paragrafy mają odpowiednią długość")
+    wszystkie_fragmenty = []
+    for sciezka_pdf in pdf_files:
+        nazwa_pdf, fragmenty = przetworz_pdf(sciezka_pdf)
+        wszystkie_fragmenty.extend(fragmenty)
 
-    return fragmenty
+        if nazwa_pdf.lower() == "regulamin.pdf":
+            # Kompatybilność wsteczna dla starszych skryptów.
+            zapisz_baze(fragmenty, PLIK_WYJSCIOWY)
+            print("Zapisano kompatybilny plik:", os.path.abspath(PLIK_WYJSCIOWY))
+
+    print(f"\nGotowe. Łącznie zaindeksowano {len(wszystkie_fragmenty)} fragmentów z {len(pdf_files)} dokumentów.")
+    return wszystkie_fragmenty
 
 
 if __name__ == "__main__":

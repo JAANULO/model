@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asystent Regulaminowy – PWr</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
   :root {
     --bg:        #0d0d0f;
@@ -418,6 +419,40 @@
       text-align: center;
   }
 
+/* ── sidebar historii ── */
+  .sidebar {
+    position: fixed;
+    top: 0; left: -320px;
+    width: 320px; height: 100%;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.3);
+  }
+  .sidebar.open { left: 0; }
+  .sidebar-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+  }
+  .sidebar-header h3 { font-size: 14px; color: var(--text); }
+  .sidebar-header button {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; transition: color 0.15s;
+  }
+  .sidebar-header button:hover { color: var(--accent); }
+  #sidebar-content { flex: 1; overflow-y: auto; padding: 12px; }
+  .sidebar-item {
+    padding: 14px 16px; margin-bottom: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; font-size: 13px;
+    color: var(--text); transition: all 0.15s;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sidebar-item:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ── responsywność mobilna ── */
   @media (max-width: 600px) {
       header {
@@ -489,8 +524,28 @@
     font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
     ✕ wyczyść
   </button>
-  <div class="status-dot" style="margin-left:12px;"></div>
+    <button id="btn-historia" onclick="toggleSidebar()" title="Historia pytań z bazy"
+    style="margin-left:8px;background:none;border:1px solid var(--border);
+    color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;
+    font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
+    🕒 historia
+  </button>
+      <button id="btn-pdf" onclick="zapiszPdf()" title="Zapisz rozmowę do PDF"
+        style="margin-left:8px;background:none;border:1px solid var(--border);
+        color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;
+        font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
+        📄 Zapisz PDF
+      </button>
+    <div class="status-dot" style="margin-left:12px;"></div>
 </header>
+
+<div id="sidebar" class="sidebar">
+  <div class="sidebar-header">
+    <h3>Historia zapytań</h3>
+    <button onclick="toggleSidebar()">✕</button>
+  </div>
+  <div id="sidebar-content"></div>
+</div>
 
 <div id="chat">
   <div class="welcome" id="welcome">
@@ -508,8 +563,9 @@
 
 <footer>
   <div class="input-row">
-    <textarea id="input" placeholder="Zadaj pytanie o regulamin studiów…" rows="1"></textarea>
-    <button id="btn" onclick="wyslij()">
+      <textarea id="input" aria-label="Pole pytania do asystenta" placeholder="Zadaj pytanie o regulamin studiów…"
+                rows="1"></textarea>
+      <button id="btn" onclick="wyslij()">
       <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="22" y1="2" x2="11" y2="13"></line>
         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -554,11 +610,12 @@
     const hist = JSON.parse(sessionStorage.getItem(HISTORIA_KEY) || '[]');
     if (hist.length === 0) return;
     ukryjWitajke();
-    hist.forEach(({ pytanie, odpowiedz }) => {
-      dodajWiadomoscUzytkownika(pytanie);
+    hist.forEach(({ pytanie, odpowiedz, czas }) => {
+      dodajWiadomoscUzytkownika(pytanie, czas);
       // uproszczone odtworzenie — tylko tekst
       const wrap = document.createElement('div');
       wrap.className = 'message-wrap';
+      wrap.dataset.ts = czas || new Date().toLocaleString('pl-PL');
       wrap.innerHTML = `<div class="msg-bot"><div class="bot-avatar">AI</div>
         <div class="bot-content"><div class="bubble">${escHtml(odpowiedz)}</div></div></div>`;
       chatEl.appendChild(wrap);
@@ -600,10 +657,11 @@
     if (w) w.remove();
   }
 
-  function dodajWiadomoscUzytkownika(tekst) {
+  function dodajWiadomoscUzytkownika(tekst, znacznikCzasu = null) {
     ukryjWitajke();
     const wrap = document.createElement('div');
     wrap.className = 'message-wrap';
+    wrap.dataset.ts = znacznikCzasu || new Date().toLocaleString('pl-PL');
     wrap.innerHTML = `
       <div class="msg-user">
         <div class="bubble">${escHtml(tekst)}</div>
@@ -632,23 +690,25 @@
     if (el) el.remove();
   }
 
-    function renderujOdpowiedz(dane) {
+  function renderujOdpowiedz(dane) {
     // nowy format – słownik z punktami
     if (dane.punkty) {
-      const punktyHtml = dane.punkty
-        .map(p => `<li>${escHtml(p)}</li>`)
-        .join('');
-      return `
-        <div class="odp-wstep">${escHtml(dane.wstep)}</div>
-        <ul class="odp-punkty">${punktyHtml}</ul>
-        ${dane.zacheta ? `<div class="odp-zacheta">💡 ${escHtml(dane.zacheta)}</div>` : ''}
-        ${dane.pelna_tresc ? `
-          <button class="btn-rozwin" onclick="rozwinTresc(this)">▼ pokaż pełny paragraf</button>
-          <div class="pelna-tresc" hidden>${escHtml(dane.pelna_tresc)}</div>
-        ` : ''}`;
+      const punktyHtml = dane.punkty.map(item => '<li>' + escHtml(item) + '</li>').join('');
+      const zachetaHtml = dane.zacheta
+        ? '<div class="odp-zacheta">💡 ' + escHtml(dane.zacheta) + '</div>'
+        : '';
+      const pelnaTrescHtml = dane.pelna_tresc
+        ? '<button class="btn-rozwin" onclick="rozwinTresc(this)">▼ pokaż pełny paragraf</button>' +
+          '<div class="pelna-tresc" hidden>' + escHtml(dane.pelna_tresc) + '</div>'
+        : '';
+
+      return '<div class="odp-wstep">' + escHtml(dane.wstep) + '</div>' +
+        '<ul class="odp-punkty">' + punktyHtml + '</ul>' +
+        zachetaHtml + pelnaTrescHtml;
     }
+
     // fallback stary format
-    return `<div>${escHtml(dane.odpowiedz || '')}</div>`;
+    return '<div>' + escHtml(dane.odpowiedz || '') + '</div>';
   }
 
   function rozwinTresc(btn) {
@@ -663,58 +723,53 @@
 
     const wrap = document.createElement('div');
     wrap.className = 'message-wrap';
+    wrap.dataset.ts = new Date().toLocaleString('pl-PL');
 
     const pct  = Math.round((dane.podobienstwo  || 0) * 100);
     const pct2 = Math.round((dane.podobienstwo2 || 0) * 100);
 
     let sourcesHtml = '';
     if (dane.tytul) {
-      sourcesHtml += `
-        <div class="source-tag">
-          <span class="dot"></span>
-          <span class="title-text">${escHtml(dane.tytul)}</span>
-        </div>`;
+      sourcesHtml += '<div class="source-tag">' +
+        '<span class="dot"></span>' +
+        '<span class="title-text">' + escHtml(dane.tytul) + '</span>' +
+        '</div>';
     }
     if (dane.tytul2) {
-      sourcesHtml += `
-        <div class="source-tag">
-          <span class="dot secondary"></span>
-          <span class="title-text">${escHtml(dane.tytul2)}</span>
-        </div>`;
+      sourcesHtml += '<div class="source-tag">' +
+        '<span class="dot secondary"></span>' +
+        '<span class="title-text">' + escHtml(dane.tytul2) + '</span>' +
+        '</div>';
     }
 
     let barsHtml = '';
     if (dane.tytul) {
-      barsHtml += `
-        <div class="sim-row">
-          <span class="sim-label">dopasowanie</span>
-          <div class="sim-track"><div class="sim-fill" data-pct="${pct}"></div></div>
-          <span class="sim-pct">${pct}%</span>
-        </div>`;
+      barsHtml += '<div class="sim-row">' +
+        '<span class="sim-label">dopasowanie</span>' +
+        '<div class="sim-track"><div class="sim-fill" data-pct="' + pct + '"></div></div>' +
+        '<span class="sim-pct">' + pct + '%</span>' +
+        '</div>';
     }
     if (dane.tytul2) {
-      barsHtml += `
-        <div class="sim-row">
-          <span class="sim-label">powiązany</span>
-          <div class="sim-track"><div class="sim-fill secondary" data-pct="${pct2}"></div></div>
-          <span class="sim-pct secondary">${pct2}%</span>
-        </div>`;
+      barsHtml += '<div class="sim-row">' +
+        '<span class="sim-label">powiązany</span>' +
+        '<div class="sim-track"><div class="sim-fill secondary" data-pct="' + pct2 + '"></div></div>' +
+        '<span class="sim-pct secondary">' + pct2 + '%</span>' +
+        '</div>';
     }
 
-    wrap.innerHTML = `
-      <div class="msg-bot">
-        <div class="bot-avatar">AI</div>
-        <div class="bot-content">
-          <div class="bubble">${renderujOdpowiedz(dane)}</div>
-          ${sourcesHtml ? `<div class="source-row">${sourcesHtml}</div>` : ''}
-
-          ${barsHtml}
-          <div class="feedback-row">
-            <button class="btn-feedback" data-ocena="1" onclick="wyślijFeedback(this)">👍</button>
-            <button class="btn-feedback" data-ocena="-1" onclick="wyślijFeedback(this)">👎</button>
-          </div>
-        </div>
-      </div>`;
+    wrap.innerHTML = '<div class="msg-bot">' +
+      '<div class="bot-avatar">AI</div>' +
+      '<div class="bot-content">' +
+      '<div class="bubble">' + renderujOdpowiedz(dane) + '</div>' +
+      (sourcesHtml ? '<div class="source-row">' + sourcesHtml + '</div>' : '') +
+      barsHtml +
+      '<div class="feedback-row">' +
+      '<button class="btn-feedback" data-ocena="1" onclick="wyslijFeedback(this)">👍</button>' +
+      '<button class="btn-feedback" data-ocena="-1" onclick="wyslijFeedback(this)">👎</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
 
 
     // zapisz pytanie_id na przyciskach feedbacku
@@ -778,7 +833,7 @@
     }
   }
 
-  async function wyślijFeedback(btn) {
+  async function wyslijFeedback(btn) {
     const pid   = btn.dataset.pid;
     const ocena = parseInt(btn.dataset.ocena);
     if (!pid) return;
@@ -820,6 +875,152 @@ function wyczyscChat() {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  function zapiszPdf() {
+    const jsPdfLib = window.jspdf;
+    if (!jsPdfLib || !jsPdfLib.jsPDF) {
+      alert('Nie udało się załadować biblioteki PDF.');
+      return;
+    }
+
+    const { jsPDF } = jsPdfLib;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    const margin = 14;
+    const lineHeight = 6;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = 18;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('PWr Asystent Regulaminowy', margin, y);
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Eksport rozmowy: ' + new Date().toLocaleString('pl-PL'), margin, y);
+    y += 4;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+
+    const wrappers = Array.from(chatEl.querySelectorAll('.message-wrap'));
+    if (wrappers.length === 0) {
+      doc.setFontSize(11);
+      doc.text('Brak wiadomości do eksportu.', margin, y);
+      doc.save('rozmowa_pwr_asystent.pdf');
+      return;
+    }
+
+    function normalizujDoPdf(tekst) {
+      // Wbudowany font helvetica nie obsługuje dobrze polskich znaków.
+      return String(tekst || '')
+        .replace(/ą/g, 'a').replace(/Ą/g, 'A')
+        .replace(/ć/g, 'c').replace(/Ć/g, 'C')
+        .replace(/ę/g, 'e').replace(/Ę/g, 'E')
+        .replace(/ł/g, 'l').replace(/Ł/g, 'L')
+        .replace(/ń/g, 'n').replace(/Ń/g, 'N')
+        .replace(/ó/g, 'o').replace(/Ó/g, 'O')
+        .replace(/ś/g, 's').replace(/Ś/g, 'S')
+        .replace(/ź/g, 'z').replace(/Ź/g, 'Z')
+        .replace(/ż/g, 'z').replace(/Ż/g, 'Z');
+    }
+
+    function tekstBabelkaDoPdf(bubble) {
+      const lista = Array.from(bubble.querySelectorAll('li'));
+      if (lista.length > 0) {
+        const punkty = lista.map(li => '- ' + li.textContent.trim());
+        return punkty.join('\n');
+      }
+      return (bubble.textContent || '').trim().replace(/\n{3,}/g, '\n\n');
+    }
+
+    for (const wrap of wrappers) {
+      const userBubble = wrap.querySelector('.msg-user .bubble');
+      const botBubble = wrap.querySelector('.msg-bot .bubble');
+      const bubble = userBubble || botBubble;
+      if (!bubble) continue;
+
+      const nadawca = userBubble ? 'Uzytkownik' : 'Asystent';
+      const znacznikCzasu = wrap.dataset.ts || new Date().toLocaleString('pl-PL');
+      const tresc = normalizujDoPdf(tekstBabelkaDoPdf(bubble));
+      if (!tresc) continue;
+
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(normalizujDoPdf(nadawca + ' [' + znacznikCzasu + ']'), margin, y);
+      y += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const akapity = tresc.split('\n');
+      for (const akapit of akapity) {
+        const linie = doc.splitTextToSize(akapit, pageWidth - margin * 2);
+        for (const linia of linie) {
+          if (y > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          doc.text(linia, margin, y);
+          y += lineHeight;
+        }
+        y += 1;
+      }
+      y += 2;
+    }
+
+    doc.save('rozmowa_pwr_asystent.pdf');
+  }
+
+  function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('open');
+    if (sidebar.classList.contains('open')) {
+      zaladujHistorie();
+    }
+  }
+
+async function zaladujHistorie() {
+    const content = document.getElementById('sidebar-content');
+    content.innerHTML = '<p style="padding:16px;color:var(--muted);font-size:12px;">Ładowanie historii...</p>';
+
+    try {
+      const res = await fetch('/historia');
+      const dane = await res.json();
+
+      if (dane.error) {
+        content.innerHTML = '<p style="padding:16px;color:var(--danger);font-size:12px;">Błąd bazy: ' + escHtml(dane.error) + '</p>';
+        return;
+      }
+
+
+      if (!Array.isArray(dane) || dane.length === 0) {
+        content.innerHTML = '<p style="padding:16px;color:var(--muted);font-size:12px;">Brak wpisów w bazie.</p>';
+        return;
+      }
+
+      content.innerHTML = dane.map(d => {
+        // Zabezpieczenie apostrofów dla onclick
+        const escapedValue = escHtml(d.pytanie).replace(/'/g, "\\'");
+        return '<div class="sidebar-item" onclick="wybierzZHistorii(\'' + escapedValue + '\')">' + escHtml(d.pytanie) + '</div>';
+      }).join('');
+
+    } catch (err) {
+      content.innerHTML = '<p style="padding:16px;color:var(--danger);font-size:12px;">Błąd pobierania historii.</p>';
+    }
+  }
+
+
+    function wybierzZHistorii(pytanie) {
+        toggleSidebar();       // Zamknij pasek
+        inputEl.value = pytanie; // Wstaw treść
+        wyslij();              // Przekaż od razu do bota
+    }
 </script>
 
 </body>

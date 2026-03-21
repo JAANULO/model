@@ -11,6 +11,7 @@ import re
 import math
 import json
 import os
+import glob
 
 try:
     from .wyszukiwarka import tokenizuj, oblicz_idf, zbuduj_wektory, podobienstwo_cosinusowe, oblicz_tf
@@ -56,12 +57,46 @@ class IndeksZdan:
     def __init__(self, plik_bazy: str):
         import pickle
 
-        cache = plik_bazy.replace('.json', '_zdania_cache.pkl')
+        if os.path.isdir(plik_bazy):
+            data_dir = plik_bazy
+            json_files = sorted(glob.glob(os.path.join(data_dir, '*.json')))
+            cache = os.path.join(data_dir, 'baza_wiedzy_zdania_cache.pkl')
+        else:
+            data_dir = os.path.dirname(os.path.abspath(plik_bazy))
+            json_files = [plik_bazy]
+            cache = plik_bazy.replace('.json', '_zdania_cache.pkl')
 
-        with open(plik_bazy, encoding='utf-8') as f:
-            fragmenty = json.load(f)
+        fragmenty = []
+        aktywne_pliki = []
+        for sciezka in json_files:
+            try:
+                with open(sciezka, encoding='utf-8') as f:
+                    dane = json.load(f)
+            except (OSError, json.JSONDecodeError):
+                continue
 
-        baza_mtime = os.path.getmtime(plik_bazy)
+            if not isinstance(dane, list):
+                continue
+
+            nazwa_zrodla = os.path.basename(sciezka)
+            licznik = 0
+            for frag in dane:
+                if not isinstance(frag, dict):
+                    continue
+                if 'tytul' not in frag or 'tresc' not in frag:
+                    continue
+                rekord = dict(frag)
+                rekord['zrodlo'] = frag.get('zrodlo', nazwa_zrodla)
+                fragmenty.append(rekord)
+                licznik += 1
+
+            if licznik > 0:
+                aktywne_pliki.append(sciezka)
+
+        if not fragmenty:
+            raise FileNotFoundError(f"Nie znaleziono poprawnych fragmentow (tytul+tresc) w JSON: {plik_bazy}")
+
+        baza_mtime = max(os.path.getmtime(p) for p in aktywne_pliki)
         if os.path.exists(cache) and os.path.getmtime(cache) > baza_mtime:
             with open(cache, 'rb') as f:
                 self.zdania, self.idf, self.wektory = pickle.load(f)
@@ -76,6 +111,7 @@ class IndeksZdan:
                     'tekst':            zdanie,
                     'tytul':            fragment['tytul'],
                     'tresc_paragrafu':  fragment['tresc'],
+                    'zrodlo':           fragment.get('zrodlo'),
                 })
 
         wszystkie_tokeny = [tokenizuj(z['tekst']) for z in self.zdania]
@@ -148,6 +184,7 @@ class IndeksZdan:
                 'zdanie':           self.zdania[i]['tekst'],
                 'tytul':            self.zdania[i]['tytul'],
                 'tresc_paragrafu':  self.zdania[i]['tresc_paragrafu'],
+                'zrodlo':           self.zdania[i].get('zrodlo'),
                 'podobienstwo':     round(score, 4),
             }
             for score, i in wyniki[:n_wynikow]

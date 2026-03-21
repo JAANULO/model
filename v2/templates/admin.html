@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administratora – PWr Asystent</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap"
+          rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d0d0f;
+            --surface: #141418;
+            --border: #2a2a32;
+            --accent: #c8ff00;
+            --accent2: #00d4ff;
+            --text: #e8e8f0;
+            --muted: #606070;
+            --danger: #ff4444;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            margin: 0;
+            padding: 32px;
+        }
+
+        h1 {
+            font-weight: 800;
+            margin-bottom: 24px;
+            font-size: 24px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .card h2 {
+            font-size: 16px;
+            color: var(--muted);
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .big-stat {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 0;
+        }
+
+        .big-stat span {
+            font-size: 16px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10px;
+        }
+
+        .bad-score {
+            color: var(--danger);
+        }
+
+        canvas {
+            max-height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Panel Administracyjny</h1>
+
+<div class="grid">
+    <div class="card">
+        <h2>Wszystkie Pytania</h2>
+        <p class="big-stat">{{ stats.pytania }}</p>
+    </div>
+    <div class="card">
+        <h2>Średnia Trafność</h2>
+        <p class="big-stat" style="color: var(--accent2);">{{ stats.srednie_podobienstwo }}<span>%</span></p>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h2>Top 5 Paragrafów</h2>
+        <canvas id="chartTop"></canvas>
+    </div>
+    <div class="card">
+        <h2>Aktywność (liczba pytań / dzień)</h2>
+        <canvas id="chartDaily"></canvas>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+    <h2>Pełna Historia Pytań i Odpowiedzi</h2>
+    <div style="overflow-x: auto; max-height: 600px; overflow-y: auto; padding-right: 8px;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Czas</th>
+                    <th>Pytanie Użytkownika</th>
+                    <th>Odpowiedź Bota</th>
+                    <th>Pewność</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats.ostatnie_pytania %}
+                <tr>
+                    <td style="white-space: nowrap;">{{ row.czas }}</td>
+                    <td style="color: var(--text);">{{ row.pytanie }}</td>
+                    <td style="color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ row.odpowiedz }}">
+                        {{ row.odpowiedz if row.odpowiedz else "Brak zapisanej odpowiedzi" }}
+                    </td>
+                    <td>{{ "%.2f"|format(row.podobienstwo) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; color: var(--muted); padding: 20px;">
+                        Brak pytań w bazie.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Ostatnie Negatywne Oceny (👎)</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Pytanie</th>
+            <th>Tytuł (Paragraf)</th>
+            <th>Podobieństwo</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in stats.zle_odpowiedzi %}
+        <tr>
+            <td style="color: var(--text);">{{ row.pytanie }}</td>
+            <td>{{ row.tytul if row.tytul else "Brak trafienia" }}</td>
+            <td class="bad-score">{{ "%.2f"|format(row.podobienstwo) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="3" style="text-align: center; color: var(--muted); padding: 20px;">
+                Brak zgłoszonych błędów. Oby tak dalej! 🎉
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Dane pobrane prosto z bazy Flask-a (zserializowane do JSON)
+    const stats = {
+    {
+        stats | tojson
+    }
+    }
+    ;
+
+    Chart.defaults.color = '#606070';
+    Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+    // Wykres słupkowy (Top paragrafy)
+    const ctxTop = document.getElementById('chartTop').getContext('2d');
+    new Chart(ctxTop, {
+        type: 'bar',
+        data: {
+            labels: stats.top_paragrafy.map(p => p.tytul.length > 25 ? p.tytul.substring(0, 25) + "..." : p.tytul),
+            datasets: [{
+                label: 'Ilość wyświetleń',
+                data: stats.top_paragrafy.map(p => p.n),
+                backgroundColor: '#c8ff00',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {legend: {display: false}},
+            scales: {
+                y: {grid: {color: '#2a2a32'}, beginAtZero: true, ticks: {stepSize: 1}},
+                x: {grid: {display: false}}
+            }
+        }
+    });
+
+    // Wykres liniowy (Pytania na dzień)
+    const ctxDaily = document.getElementById('chartDaily').getContext('2d');
+    new Chart(ctxDaily, {
+        type: 'line',
+        data: {
+            labels: stats.pytania_dzienne.map(d => d.dzien),
+            datasets: [{
+                label: 'Zadane pytania',
+                data: stats.pytania_dzienne.map(d => d.liczba),
+                borderColor: '#00d4ff',
+                backgroundColor: 'rgba(0, 212, 255, 0.15)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4, // Delikatne zaokrąglenie linii
+                pointBackgroundColor: '#00d4ff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {legend: {display: false}},
+            scales: {
+                y: {grid: {color: '#2a2a32'}, beginAtZero: true, ticks: {stepSize: 1}},
+                x: {grid: {color: '#2a2a32'}}
+            }
+        }
+    });
+</script>
+</body>
+</html>

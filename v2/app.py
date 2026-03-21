@@ -10,6 +10,9 @@ from core.formatowanie import formatuj_odpowiedz
 from core.slowniki import ROZSZERZENIA, SYNONIMY
 import logging
 import os
+import re
+import time
+from collections import OrderedDict
 from datetime import datetime
 from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki,pobierz_pytanie
 
@@ -22,10 +25,41 @@ def _znajdz_rozszerzenie(pytanie_lower: str) -> str:
             return rozszerzenie
     return ""
 
+
+def _wykryj_numer_paragrafu(pytanie: str) -> str | None:
+    """Wykrywa numer paragrafu z zapytania (np. §18, paragraf 18)."""
+    pytanie_ascii = pytanie.lower().translate(str.maketrans('ąćęłńóśźż', 'acelnoszzz'[:9]))
+    dopasowanie = re.search(r"(?:§\s*|paragraf(?:ie|u|em|owi|ach)?\s+)(\d+)", pytanie_ascii)
+    return dopasowanie.group(1) if dopasowanie else None
+
+
+def _cache_get(pytanie: str):
+    wpis = CACHE_ODPOWIEDZI.get(pytanie)
+    if not wpis:
+        return None
+    if time.time() - wpis["ts"] > CACHE_TTL_SECONDS:
+        CACHE_ODPOWIEDZI.pop(pytanie, None)
+        return None
+    return wpis["data"]
+
+
+def _cache_set(pytanie: str, odpowiedz: dict):
+    if pytanie in CACHE_ODPOWIEDZI:
+        CACHE_ODPOWIEDZI[pytanie] = {"ts": time.time(), "data": odpowiedz}
+        return
+    while len(CACHE_ODPOWIEDZI) >= CACHE_MAX_SIZE:
+        CACHE_ODPOWIEDZI.popitem(last=False)
+    CACHE_ODPOWIEDZI[pytanie] = {"ts": time.time(), "data": odpowiedz}
+
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
-PLIK_BAZY     = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
+DATA_DIR      = os.path.join(BASE_DIR, "data")
+PLIK_BAZY     = os.path.join(DATA_DIR, "baza_wiedzy.json")
 PLIK_LOG      = os.path.join(BASE_DIR, "logs", "log.txt")
 PROG_PEWNOSCI = 0.15
+
+CACHE_TTL_SECONDS = 60 * 60
+CACHE_MAX_SIZE = 500
+CACHE_ODPOWIEDZI = OrderedDict()
 
 logger = logging.getLogger("asystent")
 logger.setLevel(logging.INFO)
@@ -38,8 +72,8 @@ indeks_zdan  = None
 
 def zaladuj_wyszukiwarke():
     global wyszukiwarka
-    if not os.path.exists(PLIK_BAZY):
-        raise FileNotFoundError(f"Brak pliku '{PLIK_BAZY}'. Uruchom najpierw: python parser.py")
+    if not os.path.isdir(DATA_DIR):
+        raise FileNotFoundError(f"Brak katalogu '{DATA_DIR}'.")
 
     os.makedirs(os.path.dirname(PLIK_LOG), exist_ok=True)
 
@@ -51,10 +85,10 @@ def zaladuj_wyszukiwarke():
         ))
         logger.addHandler(fh)
 
-    wyszukiwarka = Wyszukiwarka(PLIK_BAZY)
+    wyszukiwarka = Wyszukiwarka(DATA_DIR)
     global indeks_zdan
     from core.indeks_zdan import IndeksZdan
-    indeks_zdan = IndeksZdan(PLIK_BAZY)
+    indeks_zdan = IndeksZdan(DATA_DIR)
     logger.info("Wyszukiwarka zaladowana")
 
 # ── trasy ─────────────────────────────────────────────────────────────────────
@@ -78,6 +112,60 @@ def zapytaj():
 
     if wyszukiwarka is None:
         return jsonify({"blad": "Wyszukiwarka nie załadowana"}), 500
+
+    cache_dozwolony = kontekst_tytul is None
+    if cache_dozwolony:
+        cached = _cache_get(pytanie)
+        if cached is not None:
+            return jsonify(cached)
+
+    numer_paragrafu = _wykryj_numer_paragrafu(pytanie)
+    if numer_paragrafu:
+        wynik_bezposredni = wyszukiwarka.pobierz_paragraf_po_numerze(numer_paragrafu)
+        if wynik_bezposredni:
+            odp = formatuj_odpowiedz(pytanie, wynik_bezposredni)
+            tekst_odpowiedzi = odp["wstep"] if isinstance(odp, dict) else odp
+
+            inicjalizuj()
+            pid = zapisz_pytanie(
+                pytanie,
+                wynik_bezposredni["tytul"],
+                wynik_bezposredni["podobienstwo"],
+                odpowiedz=tekst_odpowiedzi,
+            )
+
+            logger.info(
+                f"DIRECT_PARAGRAF: pid={pid}, paragraf={numer_paragrafu}, tytul='{wynik_bezposredni['tytul']}'"
+            )
+
+            if isinstance(odp, dict):
+                payload = {
+                    "wstep":         odp["wstep"],
+                    "punkty":        odp["punkty"],
+                    "tytul":         odp["tytul"],
+                    "zacheta":       odp["zacheta"],
+                    "podobienstwo":  odp["podobienstwo"],
+                    "pelna_tresc":   odp["pelna_tresc"],
+                    "tytul2":        None,
+                    "podobienstwo2": None,
+                    "pytanie_id": pid,
+                    "kontekst_tytul": odp["tytul"],
+                    "zrodlo": wynik_bezposredni.get("zrodlo"),
+                }
+                if cache_dozwolony:
+                    _cache_set(pytanie, payload)
+                return jsonify(payload)
+
+            payload = {
+                "odpowiedz": odp,
+                "tytul": wynik_bezposredni["tytul"],
+                "podobienstwo": 1.0,
+                "pytanie_id": pid,
+                "zrodlo": wynik_bezposredni.get("zrodlo"),
+            }
+            if cache_dozwolony:
+                _cache_set(pytanie, payload)
+            return jsonify(payload)
 
     rozszerzenie = _znajdz_rozszerzenie(pytanie.lower())
     pytanie_do_szukania = (pytanie + " " + rozszerzenie).strip() if rozszerzenie else pytanie
@@ -127,22 +215,28 @@ def zapytaj():
 
     if not wynik or wynik["podobienstwo"] < prog:
         pod = wynik["podobienstwo"] if wynik else 0.0
-        inicjalizuj()
-        pid = zapisz_pytanie(pytanie, None, pod)
 
-        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={pod:.3f}, pid={pid}")
         top3 = wyszukiwarka.szukaj(pytanie_do_szukania, n_wynikow=3)
         propozycje = [w["tytul"] for w in top3 if w["podobienstwo"] > 0.05]
         tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
         if propozycje:
             tekst += f" Może chodzi o: {', '.join(propozycje[:2])}?"
-        return jsonify({
+
+        inicjalizuj()
+        pid = zapisz_pytanie(pytanie, None, pod, odpowiedz=tekst)
+
+        logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={pod:.3f}, pid={pid}")
+        payload = {
             "odpowiedz": tekst,
             "tytul": None,
             "podobienstwo": pod,
             "tytul2": None,
-            "pytanie_id": pid
-        })
+            "pytanie_id": pid,
+            "zrodlo": None,
+        }
+        if cache_dozwolony:
+            _cache_set(pytanie, payload)
+        return jsonify(payload)
 
     from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
 
@@ -199,16 +293,17 @@ def zapytaj():
     else:
         odp = formatuj_odpowiedz(pytanie, wynik, najlepsze_zdanie=najlepsze_zdanie, skrot=skrot)
 
+    tekst_odpowiedzi = odp["wstep"] if isinstance(odp, dict) else odp
 
     inicjalizuj()
-    pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"])
+    pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"], odpowiedz=tekst_odpowiedzi)
 
     logger.info(
         f"ODPOWIEDZ: pid={pid}, tytul='{wynik['tytul']}', podobienstwo={wynik['podobienstwo']:.4f}"
     )
 
     if isinstance(odp, dict):
-        return jsonify({
+        payload = {
             "wstep":         odp["wstep"],
             "punkty":        odp["punkty"],
             "tytul":         odp["tytul"],
@@ -219,9 +314,17 @@ def zapytaj():
             "podobienstwo2": wynik2["podobienstwo"] if wynik2 else None,
             "pytanie_id": pid,
             "kontekst_tytul": odp["tytul"],  # przekaż do frontendu
-        })
+            "zrodlo": wynik.get("zrodlo"),
+            "zrodlo2": wynik2.get("zrodlo") if wynik2 else None,
+        }
+        if cache_dozwolony:
+            _cache_set(pytanie, payload)
+        return jsonify(payload)
     # fallback dla błędów (odp to string)
-    return jsonify({"odpowiedz": odp, "tytul": None, "podobienstwo": 0, "pytanie_id": pid})
+    payload = {"odpowiedz": odp, "tytul": None, "podobienstwo": 0, "pytanie_id": pid, "zrodlo": None}
+    if cache_dozwolony:
+        _cache_set(pytanie, payload)
+    return jsonify(payload)
 
 
 @app.route("/feedback", methods=["POST"])
@@ -233,29 +336,79 @@ def feedback():
     logger.info(f"FEEDBACK: pytanie_id={pid}, ocena={ocena}")
 
     # Dodatkowy log do pliku dla negatywnych ocen z niską pewnością
+    # Dodatkowy log do pliku dla negatywnych ocen z niską pewnością
     if ocena == -1:
         rekord = pobierz_pytanie(pid)
         if rekord and rekord["podobienstwo"] is not None and rekord["podobienstwo"] < 0.2:
-            log_dir = os.path.join(BASE_DIR, "v2", "logs")
+            log_dir = os.path.join(BASE_DIR, "logs")
             os.makedirs(log_dir, exist_ok=True)
             log_path = os.path.join(log_dir, "do_poprawy.txt")
 
             with open(log_path, "a", encoding="utf-8") as f:
                 czas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 f.write(
-                    f"[{czas}] Pytanie: '{rekord['pytanie']}' | Podobieństwo: {rekord['podobienstwo']:.3f} | Tytuł: {rekord['tytul']}\n")
+                    f"[{czas}] Pytanie: '{rekord['pytanie']}' | Odpowiedź: '{rekord['odpowiedz'] or ''}' | Podobieństwo: {rekord['podobienstwo']:.3f} | Tytuł: {rekord['tytul']}\n")
 
     return jsonify({"ok": True})
 
 
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "dev-token-zmien-mnie")
 
-@app.route("/statystyki")
-def statystyki():
+
+@app.route("/historia", methods=["GET"])
+def historia():
+    try:
+        import sqlite3
+        import glob
+
+        # Wyszukaj wszystkie bazy i wybierz tę, która faktycznie ma tabelę pytań
+        db_files = glob.glob(os.path.join(BASE_DIR, "*.db")) + glob.glob(os.path.join(BASE_DIR, "data", "*.db"))
+        if not db_files:
+            return jsonify({"error": "Nie znaleziono pliku bazy .db"}), 404
+
+        db_path = None
+        table_name = None
+
+        for candidate in db_files:
+            test_conn = sqlite3.connect(candidate)
+            test_conn.row_factory = sqlite3.Row
+            test_cur = test_conn.cursor()
+            test_cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND (name='pytania' OR name='historia')"
+            )
+            row = test_cur.fetchone()
+            test_conn.close()
+
+            if row:
+                db_path = candidate
+                table_name = row["name"]
+                break
+
+        if not db_path or not table_name:
+            return jsonify({"error": "Nie znaleziono tabeli 'pytania' ani 'historia' w żadnej bazie .db"}), 404
+
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+
+        # Pobierz 10 ostatnich niepustych i unikalnych pytań
+        cur.execute(
+            f"SELECT DISTINCT pytanie FROM {table_name} WHERE pytanie IS NOT NULL AND pytanie != '' ORDER BY id DESC LIMIT 10")
+        wyniki = [dict(row) for row in cur.fetchall()]
+        conn.close()
+        return jsonify(wyniki)
+    except Exception as e:
+        logger.error(f"Błąd pobierania historii: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin")
+def admin():
     token = request.args.get("token", "")
     if token != ADMIN_TOKEN:
-        return jsonify({"blad": "Brak dostępu"}), 403
-    return jsonify(pobierz_statystyki())
+        return "Brak dostępu! Podaj prawidłowy token w adresie, np: /admin?token=dev-token-zmien-mnie", 403
+    return render_template("admin.html", stats=pobierz_statystyki())
 
 
 # ── start ─────────────────────────────────────────────────────────────────────
