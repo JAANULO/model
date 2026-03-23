@@ -2,11 +2,11 @@
 db.py – baza SQLite dla logów, statystyk i feedbacku.
 Zastępuje log.txt. Wbudowana biblioteka sqlite3 – zero instalacji.
 """
-import sqlite3
+#import sqlite3
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+#from datetime import datetime
 
 #BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #PLIK_DB = os.path.join(BASE_DIR, "..", "data","asystent.db")
@@ -19,7 +19,7 @@ def polacz():
 
 
 def inicjalizuj():
-    "tworzy tabele jeśli nie istnieją - tabele już są w Supabase, funkcja zostawiona dla kompatybilności"""
+    """tworzy tabele jeśli nie istnieją - tabele już są w Supabase, funkcja zostawiona dla kompatybilności"""
     pass
 
 # Inicjalizacja bazy natychmiast przy załadowaniu modułu (przed jakimkolwiek zapytaniem)
@@ -71,10 +71,12 @@ def pobierz_wspolczynniki_zbiorczo():
 def pobierz_pytanie(pytanie_id):
     """Pobiera zapisane pytanie na podstawie jego ID"""
     with polacz() as conn:
-        return conn.execute(
-            "SELECT pytanie, tytul, podobienstwo, odpowiedz FROM pytania WHERE id = ?",
-            (pytanie_id,)
-        ).fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pytanie, tytul, podobienstwo FROM pytania WHERE id = %s",
+                (pytanie_id,)
+            )
+            return cur.fetchone()
 
 def pobierz_statystyki():
     with polacz() as conn:
