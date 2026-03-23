@@ -4,85 +4,58 @@ Zastępuje log.txt. Wbudowana biblioteka sqlite3 – zero instalacji.
 """
 import sqlite3
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PLIK_DB = os.path.join(BASE_DIR, "..", "data","asystent.db")
+#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#PLIK_DB = os.path.join(BASE_DIR, "..", "data","asystent.db")
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def polacz():
-    conn = sqlite3.connect(PLIK_DB)
-    conn.row_factory = sqlite3.Row   # wyniki jako słowniki
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
 
 def inicjalizuj():
-    """tworzy tabele jeśli nie istnieją"""
-    with polacz() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS pytania (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                pytanie     TEXT NOT NULL,
-                tytul       TEXT,
-                podobienstwo REAL,
-                baza        TEXT DEFAULT 'studia',
-                odpowiedz   TEXT,
-                czas        TEXT DEFAULT (datetime('now','localtime'))
-            );
-
-CREATE TABLE IF NOT EXISTS feedback (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                pytanie_id  INTEGER REFERENCES pytania(id),
-                ocena       INTEGER NOT NULL,   -- 1 = dobre, -1 = złe
-                komentarz   TEXT,
-                czas        TEXT DEFAULT (datetime('now','localtime'))
-            );
-        """)
-
-        # Prosta migracja: dodanie nowych kolumn, jeśli baza pochodzi ze starszej wersji
-        kolumny = [("tytul", "TEXT"), ("podobienstwo", "REAL"), ("baza", "TEXT DEFAULT 'studia'"),
-                   ("odpowiedz", "TEXT")]
-        for kolumna, typ in kolumny:
-            try:
-                conn.execute(f"ALTER TABLE pytania ADD COLUMN {kolumna} {typ}")
-            except sqlite3.OperationalError:
-                pass # Ignorujemy błąd, co oznacza, że kolumna już istnieje
-
-        # Migracja tabeli feedback
-        try:
-            conn.execute("ALTER TABLE feedback ADD COLUMN komentarz TEXT")
-        except sqlite3.OperationalError:
-            pass # Ignorujemy błąd, co oznacza, że kolumna już istnieje
+    "tworzy tabele jeśli nie istnieją - tabele już są w Supabase, funkcja zostawiona dla kompatybilności"""
+    pass
 
 # Inicjalizacja bazy natychmiast przy załadowaniu modułu (przed jakimkolwiek zapytaniem)
 inicjalizuj()
 
-def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia", odpowiedz=None):
+def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia"):
     with polacz() as conn:
-        cur = conn.execute(
-            "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza, odpowiedz) VALUES (?,?,?,?,?)",
-            (pytanie, tytul, podobienstwo, baza, odpowiedz)
-        )
-        return cur.lastrowid   # zwraca ID do feedbacku
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza) VALUES (%s,%s,%s,%s) RETURNING id",
+                (pytanie, tytul, podobienstwo, baza)
+            )
+            conn.commit()
+            return cur.fetchone()["id"]
 
 
 def zapisz_feedback(pytanie_id, ocena, komentarz=None):
     with polacz() as conn:
-        conn.execute(
-            "INSERT INTO feedback (pytanie_id, ocena, komentarz) VALUES (?,?,?)",
-            (pytanie_id, ocena, komentarz)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO feedback (pytanie_id, ocena, komentarz) VALUES (%s,%s,%s)",
+                (pytanie_id, ocena, komentarz)
+            )
+            conn.commit()
 
 def pobierz_wspolczynniki_zbiorczo():
-    """Pobiera wszystkie oceny jednym zapytaniem, rozwiązując problem N+1"""
     with polacz() as conn:
-        wyniki = conn.execute("""
-            SELECT p.tytul, SUM(f.ocena) as suma_ocen
-            FROM feedback f
-            JOIN pytania p ON f.pytanie_id = p.id
-            WHERE p.tytul IS NOT NULL
-            GROUP BY p.tytul
-        """).fetchall()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.tytul, SUM(f.ocena) as suma_ocen
+                FROM feedback f
+                JOIN pytania p ON f.pytanie_id = p.id
+                WHERE p.tytul IS NOT NULL
+                GROUP BY p.tytul
+            """)
+            wyniki = cur.fetchall()
 
     slownik = {}
     for w in wyniki:
@@ -104,39 +77,32 @@ def pobierz_pytanie(pytanie_id):
         ).fetchone()
 
 def pobierz_statystyki():
-    """Pobiera statystyki sesji, wyświetlane pod komendą /statystyki"""
     with polacz() as conn:
-        total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
-        avg   = conn.execute("SELECT AVG(podobienstwo) FROM pytania").fetchone()[0]
-        top   = conn.execute("""
-            SELECT tytul, COUNT(*) as n
-            FROM pytania WHERE tytul IS NOT NULL
-            GROUP BY tytul ORDER BY n DESC LIMIT 5
-        """).fetchall()
-        zle   = conn.execute("""
-            SELECT p.pytanie, p.tytul, p.podobienstwo
-            FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
-            WHERE f.ocena = -1
-            ORDER BY f.czas DESC LIMIT 10
-        """).fetchall()
-        dzienne = conn.execute("""
-            SELECT date (czas) as dzien, COUNT (*) as liczba
-            FROM pytania
-            GROUP BY dzien
-            ORDER BY dzien ASC
-            LIMIT 14
-        """).fetchall()
-        ostatnie = conn.execute("""
-            SELECT id, czas, pytanie, odpowiedz, podobienstwo
-            FROM pytania
-            ORDER BY czas DESC LIMIT 1000
-            """).fetchall()
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) as total FROM pytania")
+            total = cur.fetchone()["total"]
+
+            cur.execute("SELECT AVG(podobienstwo) as avg FROM pytania")
+            avg = cur.fetchone()["avg"]
+
+            cur.execute("""
+                SELECT tytul, COUNT(*) as n
+                FROM pytania WHERE tytul IS NOT NULL
+                GROUP BY tytul ORDER BY n DESC LIMIT 5
+            """)
+            top = cur.fetchall()
+
+            cur.execute("""
+                SELECT p.pytanie, p.tytul, p.podobienstwo
+                FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
+                WHERE f.ocena = -1
+                ORDER BY f.czas DESC LIMIT 10
+            """)
+            zle = cur.fetchall()
 
     return {
-        "pytania":             total,
-        "srednie_podobienstwo": round((avg or 0)*100, 1),
-        "top_paragrafy":       [dict(w) for w in top],
-        "zle_odpowiedzi":      [dict(z) for z in zle],
-        "pytania_dzienne": [dict(d) for d in dzienne],
-        "ostatnie_pytania": [dict(o) for o in ostatnie]
+        "pytania":              total,
+        "srednie_podobienstwo": round((avg or 0) * 100, 1),
+        "top_paragrafy":        [dict(w) for w in top],
+        "zle_odpowiedzi":       [dict(z) for z in zle]
     }

@@ -3,3 +3,4 @@ numpy
 pdfplumber
 flask
 tqdm
+psycopg2-binary
