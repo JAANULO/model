@@ -14,9 +14,20 @@ import re
 import time
 from collections import OrderedDict
 from datetime import datetime
-from core.bd import inicjalizuj, zapisz_pytanie, zapisz_feedback, pobierz_statystyki,pobierz_pytanie
+from typing import TYPE_CHECKING
+from core.bd import (
+    inicjalizuj,
+    zapisz_pytanie,
+    zapisz_feedback,
+    pobierz_statystyki,
+    pobierz_pytanie,
+    pobierz_ostatnie_pytania,
+)
 
 app = Flask(__name__)
+
+if TYPE_CHECKING:
+    from core.indeks_zdan import IndeksZdan
 
 def _znajdz_rozszerzenie(pytanie_lower: str) -> str:
     """Zwraca rozszerzenie dla pierwszej pasującej frazy lub pusty string."""
@@ -67,8 +78,8 @@ logger.propagate = False  # nie przepuszczaj do root loggera
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 # ── ładowanie wyszukiwarki raz przy starcie ───────────────────────────────────
-wyszukiwarka = None
-indeks_zdan  = None
+wyszukiwarka: Wyszukiwarka | None = None
+indeks_zdan: "IndeksZdan | None" = None
 
 def zaladuj_wyszukiwarke():
     global wyszukiwarka
@@ -99,6 +110,15 @@ def index():
 
 @app.route("/zapytaj", methods=["POST"])
 def zapytaj():
+    global wyszukiwarka
+    if wyszukiwarka is None:
+        try:
+            zaladuj_wyszukiwarke()
+            inicjalizuj()
+        except Exception as e:
+            logger.exception("Blad inicjalizacji komponentow")
+            return jsonify({"blad": f"Blad inicjalizacji: {e}"}), 500
+
     dane = request.get_json(force=True)
     pytanie = dane.get("pytanie", "").strip()
     kontekst_tytul = dane.get("kontekst_tytul", None)  # poprzedni paragraf
@@ -113,6 +133,9 @@ def zapytaj():
     if wyszukiwarka is None:
         return jsonify({"blad": "Wyszukiwarka nie załadowana"}), 500
 
+    assert wyszukiwarka is not None
+    w = wyszukiwarka
+
     cache_dozwolony = kontekst_tytul is None
     if cache_dozwolony:
         cached = _cache_get(pytanie)
@@ -121,7 +144,7 @@ def zapytaj():
 
     numer_paragrafu = _wykryj_numer_paragrafu(pytanie)
     if numer_paragrafu:
-        wynik_bezposredni = wyszukiwarka.pobierz_paragraf_po_numerze(numer_paragrafu)
+        wynik_bezposredni = w.pobierz_paragraf_po_numerze(numer_paragrafu)
         if wynik_bezposredni:
             odp = formatuj_odpowiedz(pytanie, wynik_bezposredni)
             tekst_odpowiedzi = odp["wstep"] if isinstance(odp, dict) else odp
@@ -199,7 +222,7 @@ def zapytaj():
         if pasujace:
             pytanie_do_szukania = pytanie + " " + " ".join(set(pasujace))
 
-    wyniki = wyszukiwarka.szukaj(pytanie_do_szukania, n_wynikow=2)
+    wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=2)
     wynik  = wyniki[0] if wyniki else None
 
     # drugi paragraf przy bliskim podobieństwie lub długim pytaniu
@@ -216,7 +239,7 @@ def zapytaj():
     if not wynik or wynik["podobienstwo"] < prog:
         pod = wynik["podobienstwo"] if wynik else 0.0
 
-        top3 = wyszukiwarka.szukaj(pytanie_do_szukania, n_wynikow=3)
+        top3 = w.szukaj(pytanie_do_szukania, n_wynikow=3)
         propozycje = [w["tytul"] for w in top3 if w["podobienstwo"] > 0.05]
         tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
         if propozycje:
@@ -241,7 +264,10 @@ def zapytaj():
     from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
 
     intencja = wykryj_intencje(pytanie)
-    zdania_wyniki = indeks_zdan.szukaj(pytanie, n_wynikow=5) if indeks_zdan else []
+    if indeks_zdan is not None:
+        zdania_wyniki = indeks_zdan.szukaj(pytanie, n_wynikow=5)
+    else:
+        zdania_wyniki = []
 
     # klasyfikator intencji – musi być PRZED pętlą
     intencja = wykryj_intencje(pytanie)
@@ -358,46 +384,8 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "dev-token-zmien-mnie")
 @app.route("/historia", methods=["GET"])
 def historia():
     try:
-        import sqlite3
-        import glob
-
-        # Wyszukaj wszystkie bazy i wybierz tę, która faktycznie ma tabelę pytań
-        db_files = glob.glob(os.path.join(BASE_DIR, "*.db")) + glob.glob(os.path.join(BASE_DIR, "data", "*.db"))
-        if not db_files:
-            return jsonify({"error": "Nie znaleziono pliku bazy .db"}), 404
-
-        db_path = None
-        table_name = None
-
-        for candidate in db_files:
-            test_conn = sqlite3.connect(candidate)
-            test_conn.row_factory = sqlite3.Row
-            test_cur = test_conn.cursor()
-            test_cur.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND (name='pytania' OR name='historia')"
-            )
-            row = test_cur.fetchone()
-            test_conn.close()
-
-            if row:
-                db_path = candidate
-                table_name = row["name"]
-                break
-
-        if not db_path or not table_name:
-            return jsonify({"error": "Nie znaleziono tabeli 'pytania' ani 'historia' w żadnej bazie .db"}), 404
-
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        cur = conn.cursor()
-
-
-        # Pobierz 10 ostatnich niepustych i unikalnych pytań
-        cur.execute(
-            f"SELECT DISTINCT pytanie FROM {table_name} WHERE pytanie IS NOT NULL AND pytanie != '' ORDER BY id DESC LIMIT 10")
-        wyniki = [dict(row) for row in cur.fetchall()]
-        conn.close()
-        return jsonify(wyniki)
+        inicjalizuj()
+        return jsonify(pobierz_ostatnie_pytania(10))
     except Exception as e:
         logger.error(f"Błąd pobierania historii: {e}")
         return jsonify({"error": str(e)}), 500
@@ -409,6 +397,14 @@ def admin():
     if token != ADMIN_TOKEN:
         return "Brak dostępu! Podaj prawidłowy token w adresie, np: /admin?token=dev-token-zmien-mnie", 403
     return render_template("admin.html", stats=pobierz_statystyki())
+
+
+if __name__ != "__main__":
+    try:
+        inicjalizuj()
+        zaladuj_wyszukiwarke()
+    except Exception as e:
+        logger.warning(f"Start w trybie WSGI bez pelnej inicjalizacji: {e}")
 
 
 # ── start ─────────────────────────────────────────────────────────────────────
