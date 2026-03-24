@@ -2,21 +2,27 @@
 db.py – baza SQLite dla logów, statystyk i feedbacku.
 Zastępuje log.txt. Wbudowana biblioteka sqlite3 – zero instalacji.
 """
-#import sqlite3
 import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-#from datetime import datetime
+from datetime import datetime
 
-#BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-#PLIK_DB = os.path.join(BASE_DIR, "..", "data","asystent.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
+TRYB = "postgres" if DATABASE_URL else "sqlite"
+
+if TRYB == "postgres":
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+else:
+    import sqlite3
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    PLIK_DB = os.path.join(BASE_DIR, "..", "data", "asystent.db")
 
 def polacz():
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        raise RuntimeError("Brak DATABASE_URL w zmiennych środowiskowych")
-    conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
-    return conn
+    if TRYB == "postgres":
+        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    else:
+        conn = sqlite3.connect(PLIK_DB)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 
 def inicjalizuj():
