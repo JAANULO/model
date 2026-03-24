@@ -1,6 +1,6 @@
 """
-db.py – baza SQLite dla logów, statystyk i feedbacku.
-Zastępuje log.txt. Wbudowana biblioteka sqlite3 – zero instalacji.
+db.py – baza SQLite (lokalnie) lub PostgreSQL/Supabase (produkcja).
+TRYB wykrywany automatycznie przez zmienną środowiskową DATABASE_URL.
 """
 import os
 from datetime import datetime
@@ -16,6 +16,7 @@ else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     PLIK_DB = os.path.join(BASE_DIR, "..", "data", "asystent.db")
 
+
 def polacz():
     if TRYB == "postgres":
         return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
@@ -26,65 +27,84 @@ def polacz():
 
 
 def inicjalizuj():
-    """Tworzy tabele i brakujące kolumny wymagane przez aplikację."""
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
+    """Tworzy tabele jeśli nie istnieją."""
+    if TRYB == "postgres":
+        # tabele już stworzone w Supabase przez SQL Editor
+        pass
+    else:
+        with polacz() as conn:
+            conn.executescript("""
                 CREATE TABLE IF NOT EXISTS pytania (
-                    id SERIAL PRIMARY KEY,
-                    pytanie TEXT,
-                    tytul TEXT,
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pytanie     TEXT NOT NULL,
+                    tytul       TEXT,
                     podobienstwo REAL,
-                    odpowiedz TEXT,
-                    baza TEXT DEFAULT 'studia',
-                    czas TIMESTAMP DEFAULT NOW()
-                )
-            """)
-            cur.execute("""
+                    odpowiedz   TEXT,
+                    baza        TEXT DEFAULT 'studia',
+                    czas        TEXT DEFAULT (datetime('now','localtime'))
+                );
                 CREATE TABLE IF NOT EXISTS feedback (
-                    id SERIAL PRIMARY KEY,
-                    pytanie_id INTEGER REFERENCES pytania(id) ON DELETE CASCADE,
-                    ocena INTEGER NOT NULL,
-                    komentarz TEXT,
-                    czas TIMESTAMP DEFAULT NOW()
-                )
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pytanie_id  INTEGER REFERENCES pytania(id),
+                    ocena       INTEGER NOT NULL,
+                    komentarz   TEXT,
+                    czas        TEXT DEFAULT (datetime('now','localtime'))
+                );
             """)
-            cur.execute("ALTER TABLE pytania ADD COLUMN IF NOT EXISTS odpowiedz TEXT")
-            cur.execute("ALTER TABLE pytania ADD COLUMN IF NOT EXISTS baza TEXT DEFAULT 'studia'")
-            conn.commit()
 
 
 def zapisz_pytanie(pytanie, tytul, podobienstwo, baza="studia", odpowiedz=None):
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza, odpowiedz) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza, odpowiedz) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                    (pytanie, tytul, podobienstwo, baza, odpowiedz)
+                )
+                conn.commit()
+                return cur.fetchone()["id"]
+    else:
+        with polacz() as conn:
+            cur = conn.execute(
+                "INSERT INTO pytania (pytanie, tytul, podobienstwo, baza, odpowiedz) VALUES (?,?,?,?,?)",
                 (pytanie, tytul, podobienstwo, baza, odpowiedz)
             )
-            conn.commit()
-            return cur.fetchone()["id"]
+            return cur.lastrowid
 
 
 def zapisz_feedback(pytanie_id, ocena, komentarz=None):
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "INSERT INTO feedback (pytanie_id, ocena, komentarz) VALUES (%s,%s,%s)",
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO feedback (pytanie_id, ocena, komentarz) VALUES (%s,%s,%s)",
+                    (pytanie_id, ocena, komentarz)
+                )
+                conn.commit()
+    else:
+        with polacz() as conn:
+            conn.execute(
+                "INSERT INTO feedback (pytanie_id, ocena, komentarz) VALUES (?,?,?)",
                 (pytanie_id, ocena, komentarz)
             )
-            conn.commit()
+
 
 def pobierz_wspolczynniki_zbiorczo():
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT p.tytul, SUM(f.ocena) as suma_ocen
-                FROM feedback f
-                JOIN pytania p ON f.pytanie_id = p.id
-                WHERE p.tytul IS NOT NULL
-                GROUP BY p.tytul
-            """)
-            wyniki = cur.fetchall()
+    zapytanie = """
+        SELECT p.tytul, SUM(f.ocena) as suma_ocen
+        FROM feedback f
+        JOIN pytania p ON f.pytanie_id = p.id
+        WHERE p.tytul IS NOT NULL
+        GROUP BY p.tytul
+    """
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(zapytanie)
+                wyniki = cur.fetchall()
+    else:
+        with polacz() as conn:
+            wyniki = conn.execute(zapytanie).fetchall()
 
     slownik = {}
     for w in wyniki:
@@ -97,32 +117,41 @@ def pobierz_wspolczynniki_zbiorczo():
             slownik[w['tytul']] = 1.0
     return slownik
 
+
 def pobierz_pytanie(pytanie_id):
-    """Pobiera zapisane pytanie na podstawie jego ID"""
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT pytanie, tytul, podobienstwo, odpowiedz FROM pytania WHERE id = %s",
+    """Pobiera zapisane pytanie na podstawie jego ID."""
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT pytanie, tytul, podobienstwo, odpowiedz FROM pytania WHERE id = %s",
+                    (pytanie_id,)
+                )
+                return cur.fetchone()
+    else:
+        with polacz() as conn:
+            return conn.execute(
+                "SELECT pytanie, tytul, podobienstwo, odpowiedz FROM pytania WHERE id = ?",
                 (pytanie_id,)
-            )
-            return cur.fetchone()
+            ).fetchone()
 
 
 def pobierz_ostatnie_pytania(limit=10):
-    """Zwraca ostatnie unikalne pytania (od najnowszych) do panelu historii."""
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT pytanie
-                FROM pytania
-                WHERE pytanie IS NOT NULL AND pytanie <> ''
-                ORDER BY id DESC
-                LIMIT %s
-                """,
-                (max(int(limit) * 3, int(limit)),)
-            )
-            rows = cur.fetchall()
+    """Zwraca ostatnie unikalne pytania do panelu historii."""
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT pytanie FROM pytania WHERE pytanie IS NOT NULL AND pytanie <> '' ORDER BY id DESC LIMIT %s",
+                    (limit * 3,)
+                )
+                rows = cur.fetchall()
+    else:
+        with polacz() as conn:
+            rows = conn.execute(
+                "SELECT pytanie FROM pytania WHERE pytanie IS NOT NULL AND pytanie <> '' ORDER BY id DESC LIMIT ?",
+                (limit * 3,)
+            ).fetchall()
 
     unikalne = []
     widziane = set()
@@ -132,33 +161,47 @@ def pobierz_ostatnie_pytania(limit=10):
             continue
         widziane.add(p)
         unikalne.append({"pytanie": p})
-        if len(unikalne) >= int(limit):
+        if len(unikalne) >= limit:
             break
     return unikalne
 
+
 def pobierz_statystyki():
-    with polacz() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) as total FROM pytania")
-            total = cur.fetchone()["total"]
-
-            cur.execute("SELECT AVG(podobienstwo) as avg FROM pytania")
-            avg = cur.fetchone()["avg"]
-
-            cur.execute("""
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT COUNT(*) as total FROM pytania")
+                total = cur.fetchone()["total"]
+                cur.execute("SELECT AVG(podobienstwo) as avg FROM pytania")
+                avg = cur.fetchone()["avg"]
+                cur.execute("""
+                    SELECT tytul, COUNT(*) as n
+                    FROM pytania WHERE tytul IS NOT NULL
+                    GROUP BY tytul ORDER BY n DESC LIMIT 5
+                """)
+                top = cur.fetchall()
+                cur.execute("""
+                    SELECT p.pytanie, p.tytul, p.podobienstwo
+                    FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
+                    WHERE f.ocena = -1
+                    ORDER BY f.czas DESC LIMIT 10
+                """)
+                zle = cur.fetchall()
+    else:
+        with polacz() as conn:
+            total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
+            avg   = conn.execute("SELECT AVG(podobienstwo) FROM pytania").fetchone()[0]
+            top   = conn.execute("""
                 SELECT tytul, COUNT(*) as n
                 FROM pytania WHERE tytul IS NOT NULL
                 GROUP BY tytul ORDER BY n DESC LIMIT 5
-            """)
-            top = cur.fetchall()
-
-            cur.execute("""
+            """).fetchall()
+            zle   = conn.execute("""
                 SELECT p.pytanie, p.tytul, p.podobienstwo
                 FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
                 WHERE f.ocena = -1
                 ORDER BY f.czas DESC LIMIT 10
-            """)
-            zle = cur.fetchall()
+            """).fetchall()
 
     return {
         "pytania":              total,
