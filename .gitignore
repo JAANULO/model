@@ -30,3 +30,6 @@ v2/logs/
 log.txt
 *.db
 asystent.db
+
+.agents/
+pomysly/

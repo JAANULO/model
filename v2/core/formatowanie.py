@@ -236,6 +236,7 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki, najlepsze_zdanie=None, skrot
         "zacheta":      zacheta,
         "podobienstwo": podobienstwo,
         "pelna_tresc":  tresc,
+        "najlepsze_zdanie": najlepsze_zdanie if najlepsze_zdanie else (punkty[0] if punkty else None)
     }
 
 
