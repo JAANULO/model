@@ -2,21 +2,17 @@
 # Uruchomienie: python main.py
 # Szczegoly i architektura: README.md
 
-import numpy as np
 import json
 import os
 import hashlib
 import random
-import sqlite3
-from datetime import datetime
-
 import torch
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled   = True
 
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from shared.transformer import MiniGPT, Adam, softmax, URZADZENIE
+from shared.transformer import MiniGPT, Adam, URZADZENIE
 from shared.tokenizer   import Tokenizer
 
 # ============================================================

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Kosmiczna Mapa Paragrafów</title>
+  <!-- Vis.js ciągniemy z serwera, żeby odciążyć twój RAM plikami lokalnymi -->
+  <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <style>
+    body,
+    html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+
+    h2 {
+      position: absolute;
+      top: 15px;
+      left: 25px;
+      z-index: 10;
+      color: #ccc;
+      pointer-events: none;
+      margin: 0;
+    }
+
+    h2 span {
+      font-size: 14px;
+      color: #888;
+      font-weight: normal;
+      display: block;
+      margin-top: 5px;
+    }
+
+    #network-map {
+      width: 100%;
+      height: 100%;
+    }
+
+    .vis-network:focus {
+      outline: none;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Globalna Siatka Słów PDF 🕸️<br><span>Najczęstsze skojarzenia słów. Oddal scroll by zobaczyć całość!</span></h2>
+  <div id="network-map"></div>
+
+  <script>
+    async function odpalSymulacjeFizyczna() {
+      const grawitacjaDiv = document.getElementById('network-map');
+      grawitacjaDiv.innerHTML = '<div style="padding:40px; color:#555;">Szykuje Setki Wyrazów z Całości Tekstu! Trzymaj się...</div>';
+      try {
+        const odp = await fetch('/graf_wektorowy'); // Architektura przeszła na czysty protokół GET (odpytywanie całej bazy bez payloadów)
+        const daneAlgorytmu = await odp.json();
+        grawitacjaDiv.innerHTML = '';
+
+        if (!daneAlgorytmu.nodes || daneAlgorytmu.nodes.length === 0) {
+          grawitacjaDiv.innerHTML = '<div style="padding:40px;">Brak słów w bazie danych. PDF jest pusty lub nieudany!</div>'; return;
+        }
+        const OpcjeVis = {
+          nodes: { font: { color: '#bbb', face: 'Trebuchet MS', strokeWidth: 0 }, borderWidth: 0 },
+          edges: { smooth: { type: "continuous" } },
+          physics: { barnesHut: { gravitationalConstant: -2000, centralGravity: 0.1, springLength: 90 } } // Skrócenie dystansu by gąszcze pojęć się zlepiały
+        };
+        new vis.Network(grawitacjaDiv, { nodes: new vis.DataSet(daneAlgorytmu.nodes), edges: new vis.DataSet(daneAlgorytmu.edges) }, OpcjeVis);
+      } catch (err) {
+        console.error("Awaria czujników wektorowych:", err);
+      }
+    }
+    odpalSymulacjeFizyczna();
+  </script>
+</body>
+
+</html>

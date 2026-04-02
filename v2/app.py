@@ -39,7 +39,7 @@ def _znajdz_rozszerzenie(pytanie_lower: str) -> str:
 
 def _wykryj_numer_paragrafu(pytanie: str) -> str | None:
     """Wykrywa numer paragrafu z zapytania (np. §18, paragraf 18)."""
-    pytanie_ascii = pytanie.lower().translate(str.maketrans('ąćęłńóśźż', 'acelnoszzz'[:9]))
+    pytanie_ascii = pytanie.lower().translate(MAPA_ZNAKOW)
     dopasowanie = re.search(r"(?:§\s*|paragraf(?:ie|u|em|owi|ach)?\s+)(\d+)", pytanie_ascii)
     return dopasowanie.group(1) if dopasowanie else None
 
@@ -68,12 +68,15 @@ PLIK_BAZY     = os.path.join(DATA_DIR, "baza_wiedzy.json")
 PLIK_LOG      = os.path.join(BASE_DIR, "logs", "log.txt")
 PROG_PEWNOSCI = 0.15
 
+MAPA_ZNAKOW = str.maketrans('ąćęłńóśźż', 'acelnoszz')
+
 CACHE_TTL_SECONDS = 60 * 60
 CACHE_MAX_SIZE = 500
 CACHE_ODPOWIEDZI = OrderedDict()
 
 logger = logging.getLogger("asystent")
-logger.setLevel(logging.INFO)
+poziom_logow = os.environ.get("LOG_LEVEL", "INFO").upper()
+logger.setLevel(getattr(logging, poziom_logow, logging.INFO))
 logger.propagate = False  # nie przepuszczaj do root loggera
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -145,11 +148,10 @@ def zapytaj():
     numer_paragrafu = _wykryj_numer_paragrafu(pytanie)
     if numer_paragrafu:
         wynik_bezposredni = w.pobierz_paragraf_po_numerze(numer_paragrafu)
+
         if wynik_bezposredni:
             odp = formatuj_odpowiedz(pytanie, wynik_bezposredni)
             tekst_odpowiedzi = odp["wstep"] if isinstance(odp, dict) else odp
-
-            inicjalizuj()
             pid = zapisz_pytanie(
                 pytanie,
                 wynik_bezposredni["tytul"],
@@ -200,15 +202,16 @@ def zapytaj():
         "a jak nie", "jak nie zdam", "jak obleje", "co jak nie",
         "a czy moge", "czy wtedy", "co z tym", "i co z",
     ]
-    pyt_ascii = pytanie.lower().translate(str.maketrans('ąćęłńóśźż', 'acelnoszzz'[:9]))
+    pyt_ascii = pytanie.lower().translate(MAPA_ZNAKOW)
+    
     jest_kontekstowe = (
             kontekst_tytul is not None and
             len(pytanie.split()) <= 7 and
             any(s in pyt_ascii for s in SYGNALY_KONTEKSTU)
     )
-    print(
-        f"DEBUG jest_kontekstowe={jest_kontekstowe}, tytul={kontekst_tytul}, len={len(pytanie.split())}, ascii={pyt_ascii}")
-
+    logger.debug(
+        f"jest_kontekstowe={jest_kontekstowe}, tytul={kontekst_tytul}, len={len(pytanie.split())}, ascii={pyt_ascii}"
+    )
     # dla pytań kontekstowych – dodaj poprzedni paragraf do zapytania
     if jest_kontekstowe and kontekst_pytanie:
         pytanie_do_szukania = kontekst_pytanie + " " + pytanie
@@ -222,13 +225,14 @@ def zapytaj():
         if pasujace:
             pytanie_do_szukania = pytanie + " " + " ".join(set(pasujace))
 
-    wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=2)
+    wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=3)
     wynik  = wyniki[0] if wyniki else None
 
     # drugi paragraf przy bliskim podobieństwie lub długim pytaniu
     wynik2 = None
-    if len(wyniki) == 2:
+    if len(wyniki) >= 2:
         roznica = wyniki[0]["podobienstwo"] - wyniki[1]["podobienstwo"]
+
         # drugi paragraf tylko gdy: blisko pierwszego ORAZ długie pytanie (więcej kontekstu)
         if roznica < 0.03 and len(pytanie.split()) >= 6:
             wynik2 = wyniki[1]
@@ -238,17 +242,14 @@ def zapytaj():
 
     if not wynik or wynik["podobienstwo"] < prog:
         pod = wynik["podobienstwo"] if wynik else 0.0
-
-        top3 = w.szukaj(pytanie_do_szukania, n_wynikow=3)
-        propozycje = [w["tytul"] for w in top3 if w["podobienstwo"] > 0.05]
+        propozycje = [w["tytul"] for w in wyniki[:3] if w["podobienstwo"] > 0.05]
         tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
+
         if propozycje:
             tekst += f" Może chodzi o: {', '.join(propozycje[:2])}?"
-
-        inicjalizuj()
         pid = zapisz_pytanie(pytanie, None, pod, odpowiedz=tekst)
-
         logger.info(f"BRAK_TRAFIENIA: pytanie='{pytanie}', najlepsze={pod:.3f}, pid={pid}")
+
         payload = {
             "odpowiedz": tekst,
             "tytul": None,
@@ -288,7 +289,7 @@ def zapytaj():
 
             else:
                 l = wyciagnij_liczbe(zw['zdanie'])
-                print(f"DEBUG zdanie: {zw['zdanie'][:80]} → L:{l}")
+                logger.debug(f"zdanie: {zw['zdanie'][:80]} → L:{l}")
                 if l:
                     najlepsze_zdanie = zw['zdanie']
                     break
@@ -316,14 +317,11 @@ def zapytaj():
     # dla SKUTEK i TAK_NIE jedno zdanie wystarczy
     if intencja in ("SKUTEK", "TAK_NIE") and najlepsze_zdanie:
         odp = formatuj_odpowiedz(pytanie, wynik, najlepsze_zdanie=najlepsze_zdanie, skrot=skrot, tylko_jedno=True)
+   
     else:
         odp = formatuj_odpowiedz(pytanie, wynik, najlepsze_zdanie=najlepsze_zdanie, skrot=skrot)
-
     tekst_odpowiedzi = odp["wstep"] if isinstance(odp, dict) else odp
-
-    inicjalizuj()
     pid = zapisz_pytanie(pytanie, wynik["tytul"], wynik["podobienstwo"], odpowiedz=tekst_odpowiedzi)
-
     logger.info(
         f"ODPOWIEDZ: pid={pid}, tytul='{wynik['tytul']}', podobienstwo={wynik['podobienstwo']:.4f}"
     )
@@ -380,6 +378,21 @@ def feedback():
 
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "dev-token-zmien-mnie")
 
+
+@app.route("/graf_widok", methods=["GET"])
+def graf_widok():
+    """Otwiera kompletnie czysty plik nowego interfejsu (żeby nie pożerać wydajności asystenta)"""
+    pytanie = request.args.get("pytanie", "")
+    return render_template("graf.html", pytanie=pytanie)
+    
+@app.route("/graf_wektorowy", methods=["GET"])
+def graf_wektorowy():
+    """Zwraca potężną mapę globalnych powiązań słów (Bigramów) skumulowanych podczas analizy wgranego PDF."""
+    if not wyszukiwarka:
+        return jsonify({"nodes": [], "edges": []})
+        
+    siatka_slow = wyszukiwarka.generuj_graf_slow(top_k=70) # Limit aby Twój RAM wytrzymał obliczenia setek połączeń na ekranie!
+    return jsonify(siatka_slow)
 
 @app.route("/historia", methods=["GET"])
 def historia():

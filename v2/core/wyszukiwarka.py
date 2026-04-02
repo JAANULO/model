@@ -9,6 +9,7 @@ import math
 import re
 import os
 import glob
+import time
 
 try:
     from .bd import pobierz_wspolczynniki_zbiorczo
@@ -20,17 +21,23 @@ except ImportError:
     from stemmer import stemuj
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
-
+MAPA_WAG_TTL = 60
+_mapa_wag_cache = {"ts": 0.0, "data": {}}
+def _pobierz_mapa_wag_cached():
+    obecny_czas = time.time()
+    if obecny_czas - _mapa_wag_cache["ts"] <= MAPA_WAG_TTL:
+        return _mapa_wag_cache["data"]
+    
+    _mapa_wag_cache["data"] = pobierz_wspolczynniki_zbiorczo()
+    _mapa_wag_cache["ts"] = obecny_czas
+    return _mapa_wag_cache["data"]
 
 # ── Krok 1: przygotowanie tekstu ──────────────────────────────────────────────
 
+MAPA_ZNAKOW = str.maketrans('ąćęłńóśźżĄĆĘŁŃÓŚŹŻ', 'acelnoszzACELNOSZZ')
 def usun_polskie_znaki(tekst):
     """zamienia polskie litery na odpowiedniki bez ogonkow"""
-    zamiana = str.maketrans(
-        'ąćęłńóśźżĄĆĘŁŃÓŚŹŻ',
-        'acelnoszzACELNOSZZ'
-    )
-    return tekst.translate(zamiana)
+    return tekst.translate(MAPA_ZNAKOW)
 
 def levenshtein(a, b):
     """oblicza odległość edycyjną między dwoma słowami"""
@@ -277,6 +284,60 @@ class Wyszukiwarka:
         dopasowanie = re.search(r'(?:§\s*|paragraf(?:ie|u|em|owi|ach)?\s+)(\d+)', pytanie_czyste)
         return dopasowanie.group(1) if dopasowanie else None
 
+    def generuj_graf_slow(self, top_k=70):
+        """Mapuje całą rozpiętość merytoryczną dokumentu w pary skojarzeń na podstawie sąsiedztwa."""
+        
+        # Cache na poziomie instancji - graf generujemy ZAWSZE TYLKO RAZ!
+        cache_key = f"_graf_cache_{top_k}_dziala"
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+            
+        from collections import Counter
+        bigramy = Counter()
+        wystapienia_wezlow = Counter()
+        
+        # Mielenie całych akapitów wyraz po wyrazie
+        for tokeny in self.wszystkie_tokeny:
+            for i in range(len(tokeny) - 1):
+                A, B = tokeny[i], tokeny[i+1]
+                if len(A) < 3 or len(B) < 3: 
+                    continue # śmieci i przyimki
+                if A == B:
+                    continue # Odrzuca błąd samotnej wyspy (słowo łączące się same ze sobą)
+                # Sortowanie, żeby kolejność słów (A->B czy B->A) nie grała roli
+                para = tuple(sorted([A, B]))
+                bigramy[para] += 1
+                
+        najczestsze = bigramy.most_common(top_k)
+        
+        wezly_set = set()
+        edges = []
+        for (A, B), waga in najczestsze:
+            if waga < 2: continue # Odrzucamy przypadek pojedynczy asocjacji
+            wystapienia_wezlow[A] += waga
+            wystapienia_wezlow[B] += waga
+            wezly_set.add(A)
+            wezly_set.add(B)
+            edges.append({
+                "from": A, "to": B, "value": waga, 
+                "color": {"color": "rgba(200,200,200,0.3)", "highlight": "#ff3b30"}
+            })
+            
+        nodes = []
+        for wezel in wezly_set:
+            # Im więcej powiązań przechodzi przez słowo, tym kółko jest potężniejsze 
+            wielkosc = 10 + min(wystapienia_wezlow[wezel] * 1.5, 40)
+            nodes.append({
+                "id": wezel, "label": wezel, "shape": "dot", "size": wielkosc, "color": "#007aff",
+                "font": {"color": "#888", "size": max(10, min(14, wielkosc))}
+            })
+            
+        wynik = {"nodes": nodes, "edges": edges}
+        
+        setattr(self, cache_key, wynik)
+        return wynik
+
+
     def pobierz_paragraf_po_numerze(self, numer):
         """Zwraca fragment paragrafu po numerze lub None, bez liczenia BM25."""
         numer = str(numer)
@@ -328,7 +389,7 @@ class Wyszukiwarka:
         }
 
         # Słownik zbiorczy nazywamy 'mapa_wag'
-        mapa_wag = pobierz_wspolczynniki_zbiorczo()
+        mapa_wag = _pobierz_mapa_wag_cached()
         wyniki = []
 
         for i, wf in enumerate(self.wektory):

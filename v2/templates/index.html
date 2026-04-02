@@ -1154,11 +1154,13 @@
       }
 
       const skrzyneczkacopyHtml = escHtml(czystyKopiowanyTekst);
-      // Guzik pokazujący paragraf wylatuje z bańki, ładuje się od sekundy zero.
+
+      // Zgodnie z decyzją projektową rezygnujemy z powiązań przy odpowiadaniu przez bota
       const natychmiastowyParagraf = dane.pelna_tresc
         ? '<div style="margin-top: 8px;"><button class="btn-rozwin" onclick="rozwinTresc(this)">▼ pokaż pełny paragraf</button>' +
         '<div class="pelna-tresc" hidden>' + escHtml(dane.pelna_tresc) + '</div></div>'
         : '';
+
       wrap.innerHTML = '<div class="msg-bot">' +
         '<div class="bot-avatar">AI</div>' +
         '<div class="bot-content">' +
@@ -1334,10 +1336,11 @@
     async function pokazBazeWiedzy() {
       const infoDiv = document.getElementById('infoBazaWidzy');
       infoDiv.style.display = 'block';
-      infoDiv.innerHTML = '<i>Zaciąganie danych z serwera...</i>';
+
+      const btnAnalizaSrodowiska = '<button class="btn-rozwin" style="margin-top: 10px; border-color: var(--accent); color: var(--accent); display:block; width: 100%;" onclick="window.open(\'/graf_widok\', \'_blank\')">🌐 Otwórz Globalną Siatkę Słów PDF</button>';
       infoDiv.innerHTML = `<b>Wczytane pliki źródłowe ⚙️:</b><br/>
          📄 Regulamin_studiow_PWr.pdf<br/>
-         <i style="color:var(--muted); font-size:10px;">(Pliki spakowane zostały do przestrzeni wektorowej z folderu /data/)</i>`;
+         <i style="color:var(--muted); font-size:10px;">Dane przetworzone wektorowo.</i><br>` + btnAnalizaSrodowiska;
     }
 
     function otworzOpcje() {

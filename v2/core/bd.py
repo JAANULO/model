@@ -3,7 +3,6 @@ db.py – baza SQLite (lokalnie) lub PostgreSQL/Supabase (produkcja).
 TRYB wykrywany automatycznie przez zmienną środowiskową DATABASE_URL.
 """
 import os
-from datetime import datetime
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 TRYB = "postgres" if DATABASE_URL else "sqlite"
@@ -180,13 +179,30 @@ def pobierz_statystyki():
                     GROUP BY tytul ORDER BY n DESC LIMIT 5
                 """)
                 top = cur.fetchall()
+
                 cur.execute("""
-                    SELECT p.pytanie, p.tytul, p.podobienstwo
-                    FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
-                    WHERE f.ocena = -1
-                    ORDER BY f.czas DESC LIMIT 10
-                """)
+                            SELECT p.pytanie, p.tytul, p.podobienstwo
+                            FROM feedback f
+                                     JOIN pytania p ON f.pytanie_id = p.id
+                            WHERE f.ocena = -1
+                            ORDER BY f.czas DESC LIMIT 10
+                            """)
                 zle = cur.fetchall()
+
+                cur.execute("""
+                            SELECT TO_CHAR(czas::timestamp, 'YYYY-MM-DD') as dzien, COUNT(*) as liczba
+                            FROM pytania
+                            GROUP BY dzien
+                            ORDER BY dzien LIMIT 30
+                            """)
+                dzienne = cur.fetchall()
+
+                cur.execute("""
+                            SELECT czas, pytanie, odpowiedz, podobienstwo
+                            FROM pytania
+                            ORDER BY id DESC LIMIT 50
+                            """)
+                ostatnie = cur.fetchall()
     else:
         with polacz() as conn:
             total = conn.execute("SELECT COUNT(*) FROM pytania").fetchone()[0]
@@ -196,16 +212,33 @@ def pobierz_statystyki():
                 FROM pytania WHERE tytul IS NOT NULL
                 GROUP BY tytul ORDER BY n DESC LIMIT 5
             """).fetchall()
-            zle   = conn.execute("""
-                SELECT p.pytanie, p.tytul, p.podobienstwo
-                FROM feedback f JOIN pytania p ON f.pytanie_id = p.id
-                WHERE f.ocena = -1
-                ORDER BY f.czas DESC LIMIT 10
-            """).fetchall()
+
+            zle = conn.execute("""
+                               SELECT p.pytanie, p.tytul, p.podobienstwo
+                               FROM feedback f
+                                        JOIN pytania p ON f.pytanie_id = p.id
+                               WHERE f.ocena = -1
+                               ORDER BY f.czas DESC LIMIT 10
+                                 """).fetchall()
+
+            dzienne = conn.execute("""
+                                   SELECT substr(czas, 1, 10) as dzien, COUNT(*) as liczba
+                                   FROM pytania
+                                   GROUP BY substr(czas, 1, 10)
+                                   ORDER BY dzien LIMIT 30
+                                   """).fetchall()
+
+            ostatnie = conn.execute("""
+                                    SELECT czas, pytanie, odpowiedz, podobienstwo
+                                    FROM pytania
+                                    ORDER BY id DESC LIMIT 50
+                                    """).fetchall()
 
     return {
-        "pytania":              total,
+        "pytania": total,
         "srednie_podobienstwo": round((avg or 0) * 100, 1),
-        "top_paragrafy":        [dict(w) for w in top],
-        "zle_odpowiedzi":       [dict(z) for z in zle]
+        "top_paragrafy": [dict(w) for w in top],
+        "zle_odpowiedzi": [dict(z) for z in zle],
+        "pytania_dzienne": [dict(d) for d in dzienne],
+        "ostatnie_pytania": [dict(o) for o in ostatnie],
     }
