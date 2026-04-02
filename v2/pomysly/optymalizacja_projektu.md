@@ -7,7 +7,7 @@ Kolejnosc jest ustawiona od najwiekszego efektu do najmniejszego.
 
 ## Priorytet P0 (najwiekszy zysk, niski koszt)
 
-## 1) Zmniejsz liczbe zapytan do bazy podczas wyszukiwania
+## 1) Zmniejsz liczbe zapytan do bazy podczas wyszukiwania [zrobione]
 
 **Problem:**
 W `v2/core/wyszukiwarka.py` funkcja `szukaj()` przy kazdym zapytaniu pobiera `mapa_wag` przez `pobierz_wspolczynniki_zbiorczo()`.
@@ -41,7 +41,7 @@ To powoduje dodatkowy koszt DB dla kazdego pytania uzytkownika.
 
 ---
 
-## 2) Usun wielokrotne `inicjalizuj()` z hot-path `/zapytaj`
+## 2) Usun wielokrotne `inicjalizuj()` z hot-path `/zapytaj` [zrobione]
 
 **Problem:**
 W `v2/app.py` `inicjalizuj()` jest odpalane wielokrotnie w `zapytaj()`, mimo ze baza jest juz inicjalizowana przy starcie.
@@ -67,7 +67,7 @@ W `v2/app.py` `inicjalizuj()` jest odpalane wielokrotnie w `zapytaj()`, mimo ze 
 
 ---
 
-## 3) Nie wyszukuj dwa razy przy slabym dopasowaniu
+## 3) Nie wyszukuj dwa razy przy slabym dopasowaniu [zrobione]
 
 **Problem:**
 W `v2/app.py` najpierw jest `szukaj(..., n_wynikow=2)`, a potem w fallback ponownie `szukaj(..., n_wynikow=3)`.
@@ -91,7 +91,7 @@ W `v2/app.py` najpierw jest `szukaj(..., n_wynikow=2)`, a potem w fallback ponow
 
 ## Priorytet P1 (stabilnosc i produkcja)
 
-## 4) Dodaj pooling polaczen PostgreSQL
+## 4) Dodaj pooling polaczen PostgreSQL [nie zrobione]
 
 **Problem:**
 W `v2/core/bd.py` dla Postgresa tworzysz nowe polaczenie przy kazdym wywolaniu `polacz()`.
@@ -113,7 +113,7 @@ W `v2/core/bd.py` dla Postgresa tworzysz nowe polaczenie przy kazdym wywolaniu `
 
 ---
 
-## 5) Usprawnij logike debug
+## 5) Usprawnij logike debug [zrobione]
 
 **Problem:**
 W `v2/app.py` sa `print(...)` w goracej sciezce requestu (np. kontekst/intencje).
@@ -133,7 +133,7 @@ W `v2/app.py` sa `print(...)` w goracej sciezce requestu (np. kontekst/intencje)
 
 ---
 
-## 6) Ujednolic transliteracje polskich znakow
+## 6) Ujednolic transliteracje polskich znakow [zrobione]
 
 **Problem:**
 Kilka miejsc tworzy `str.maketrans(...)` dynamicznie.
@@ -153,7 +153,7 @@ Kilka miejsc tworzy `str.maketrans(...)` dynamicznie.
 
 ## Priorytet P2 (porzadki i jakosc kodu)
 
-## 7) Uspokój ostrzezenia IDE (nie sa krytyczne)
+## 7) Uspokój ostrzezenia IDE (nie sa krytyczne) [nie zrobione]
 
 **Problem:**
 IDE pokazuje ostrzezenia dot. nieuzywanych importow i SQL inspections.
@@ -172,7 +172,7 @@ IDE pokazuje ostrzezenia dot. nieuzywanych importow i SQL inspections.
 
 ---
 
-## 8) Drobne porzadki w endpointach
+## 8) Drobne porzadki w endpointach [zrobione]
 
 **Problem:**
 W `v2/app.py` import `pobierz_ostatnie_pytania` jest poprawny, ale warto dopilnowac spojnosc endpointow i nazewnictwa payloadow.

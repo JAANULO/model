@@ -1,6 +1,3 @@
-torch
 numpy
-pdfplumber
 flask
-tqdm
 gunicorn>=21.2.0

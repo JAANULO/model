@@ -1,0 +1,4 @@
+torch
+pdfplumber
+tqdm
+flake8

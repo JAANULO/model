@@ -7,22 +7,35 @@ import os
 DATABASE_URL = os.environ.get("DATABASE_URL")
 TRYB = "postgres" if DATABASE_URL else "sqlite"
 
+from contextlib import contextmanager
+
 if TRYB == "postgres":
     import psycopg2
     from psycopg2.extras import RealDictCursor
+    from psycopg2.pool import ThreadedConnectionPool
+    pg_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
 else:
     import sqlite3
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     PLIK_DB = os.path.join(BASE_DIR, "..", "data", "asystent.db")
 
-
+@contextmanager
 def polacz():
     if TRYB == "postgres":
-        return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        conn = pg_pool.getconn()
+        # dla gładkiego zmapowania RealDictCursor z puli
+        conn.cursor_factory = RealDictCursor
+        try:
+            yield conn
+        finally:
+            pg_pool.putconn(conn)
     else:
         conn = sqlite3.connect(PLIK_DB)
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            yield conn
+        finally:
+            conn.close()
 
 
 def inicjalizuj():

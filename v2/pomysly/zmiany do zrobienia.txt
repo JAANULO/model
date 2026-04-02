@@ -64,7 +64,7 @@ Używając biblioteki jsPDF z CDN wygeneruj PDF z historią rozmowy – pytania 
 Bez zewnętrznych fontów, tylko podstawowy styl, logo "PWr Asystent Regulaminowy" w nagłówku PDF.
 Pokaż tylko zmienione fragmenty w formacie SEARCH/REPLACE.
 
-8. Historia wyszukiwań w panelu bocznym
+8. Historia wyszukiwań w panelu bocznym - ZROBIONE
 Dołącz pliki: v2/templates/index.html, v2/app.py
 Prompt:
 Mam aplikację czatu (index.html) i serwer Flask (app.py).
@@ -86,7 +86,7 @@ Zabezpiecz endpoint tokenem z zmiennej środowiskowej ADMIN_TOKEN.
 Projekt używa Python 3.13, Flask, SQLite.
 Pokaż nowy plik admin.html i zmiany w app.py w formacie SEARCH/REPLACE.
 
-10. Rozszerzenie bazy o inne dokumenty
+10. Rozszerzenie bazy o inne dokumenty - NIE ZROBIONE
 Dołącz pliki: v2/parser.py, v2/core/wyszukiwarka.py, v2/core/indeks_zdan.py, v2/app.py
 Prompt:
 Mam parser PDF (parser.py) który parsuje jeden plik i zapisuje do baza_wiedzy.json.
