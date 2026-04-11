@@ -4,10 +4,6 @@ Uruchomienie: python app.py
 Adres:        http://localhost:5000
 """
 
-from flask import Flask, request, jsonify, render_template
-from core.wyszukiwarka import Wyszukiwarka
-from core.formatowanie import formatuj_odpowiedz
-from core.slowniki import ROZSZERZENIA, SYNONIMY
 import logging
 import os
 import re
@@ -15,14 +11,21 @@ import time
 from collections import OrderedDict
 from datetime import datetime
 from typing import TYPE_CHECKING
+
+from flask import Flask, jsonify, render_template, request
+
 from core.bd import (
     inicjalizuj,
-    zapisz_pytanie,
-    zapisz_feedback,
-    pobierz_statystyki,
-    pobierz_pytanie,
     pobierz_ostatnie_pytania,
+    pobierz_pytanie,
+    pobierz_statystyki,
+    zapisz_feedback,
+    zapisz_pytanie,
 )
+from core.formatowanie import formatuj_odpowiedz
+from core.slowniki import ROZSZERZENIA, SYNONIMY
+from core.wyszukiwarka import Wyszukiwarka
+
 
 app = Flask(__name__)
 
@@ -123,10 +126,11 @@ def zapytaj():
 
     dane = request.get_json(force=True)
     pytanie = dane.get("pytanie", "").strip()
+    filtr_zrodlo = dane.get("zrodlo", "Wszystkie dokumenty")
     kontekst_tytul = dane.get("kontekst_tytul", None)  # poprzedni paragraf
     kontekst_pytanie = dane.get("kontekst_pytanie", None)  # poprzednie pytanie
     #print(f"DEBUG kontekst: tytul={kontekst_tytul}, pytanie={kontekst_pytanie}")
-    logger.info(f"PYTANIE: {pytanie} | kontekst: {kontekst_tytul}")
+    logger.info(f"PYTANIE: {pytanie} | zrodlo: {filtr_zrodlo} | kontekst: {kontekst_tytul}")
 
     if not pytanie:
         logger.warning("Puste pytanie od klienta")
@@ -224,7 +228,7 @@ def zapytaj():
         if pasujace:
             pytanie_do_szukania = pytanie + " " + " ".join(set(pasujace))
 
-    wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=3)
+    wyniki = w.szukaj(pytanie_do_szukania, n_wynikow=3, zrodlo=filtr_zrodlo)
     wynik  = wyniki[0] if wyniki else None
 
     # drugi paragraf przy bliskim podobieństwie lub długim pytaniu
@@ -232,14 +236,30 @@ def zapytaj():
     if len(wyniki) >= 2:
         roznica = wyniki[0]["podobienstwo"] - wyniki[1]["podobienstwo"]
 
+        # Disambiguator (Uściślanie): Dwa paragrafy idą łeb w łeb, a pytanie było bardzo krótkie
+        if roznica <= 0.04 and len(pytanie.split()) <= 4 and wyniki[0]["podobienstwo"] >= 0.12:
+            pid = zapisz_pytanie(pytanie, None, wyniki[0]["podobienstwo"], odpowiedz="[SYSTEM WAHAŃ]")
+            logger.info(f"DISAMBIGUATION: pytanie='{pytanie}' -> {wyniki[0]['tytul']} vs {wyniki[1]['tytul']}")
+            return jsonify({
+                "disambiguation": True,
+                "pytanie_id": pid,
+                "komunikat": "Och! Twoje zapytanie jest delikatnie ogólnikowe i dotyka stref dwóch podobnych tematów. O który dokładnie ustęp Ci chodzi?",
+                "opcje": [wyniki[0]["tytul"], wyniki[1]["tytul"]]
+            })
+
         # drugi paragraf tylko gdy: blisko pierwszego ORAZ długie pytanie (więcej kontekstu)
         if roznica < 0.03 and len(pytanie.split()) >= 6:
             wynik2 = wyniki[1]
 
-    prog = 0.10 if jest_kontekstowe else PROG_PEWNOSCI
-    #print(f"DEBUG prog={prog}, podobienstwo={wynik['podobienstwo'] if wynik else None}")
+
+    # Dynamiczny próg dopasowań (Krótkie strzały zmniejszają wymagania ufności RAG, długie polepszają jakość)
+    dynamiczny_prog = max(0.08, min(0.20, 0.05 + (len(pytanie.split()) * 0.02)))
+    prog = 0.10 if jest_kontekstowe else dynamiczny_prog
+    
+    #print(f"DEBUG dynamic_prog: {dynamiczny_prog}, podobienstwo: {wynik['podobienstwo'] if wynik else None}")
 
     if not wynik or wynik["podobienstwo"] < prog:
+
         pod = wynik["podobienstwo"] if wynik else 0.0
         propozycje = [w["tytul"] for w in wyniki[:3] if w["podobienstwo"] > 0.05]
         tekst = "Nie znalazłem dokładnej odpowiedzi w regulaminie."
@@ -326,11 +346,13 @@ def zapytaj():
     )
 
     if isinstance(odp, dict):
+        from core.wyszukiwarka import tokenizuj
         payload = {
             "wstep":         odp["wstep"],
             "punkty":        odp["punkty"],
             "tytul":         odp["tytul"],
             "zacheta":       odp["zacheta"],
+            "slowa_kluczowe": tokenizuj(pytanie),
             "podobienstwo":  odp["podobienstwo"],
             "pelna_tresc":   odp["pelna_tresc"],
             "tytul2":        wynik2["tytul"] if wynik2 else None,
@@ -386,12 +408,29 @@ def graf_widok():
     
 @app.route("/graf_wektorowy", methods=["GET"])
 def graf_wektorowy():
-    """Zwraca potężną mapę globalnych powiązań słów (Bigramów) skumulowanych podczas analizy wgranego PDF."""
+    """Zwraca graf słów (bigramy) lub graf paragrafów, zależnie od parametru ?tryb="""
     if not wyszukiwarka:
         return jsonify({"nodes": [], "edges": []})
-        
-    siatka_slow = wyszukiwarka.generuj_graf_slow(top_k=70) # Limit aby Twój RAM wytrzymał obliczenia setek połączeń na ekranie!
-    return jsonify(siatka_slow)
+    
+    tryb = request.args.get("tryb", "slowa")
+    if tryb == "paragrafy":
+        return jsonify(wyszukiwarka.generuj_graf_paragrafow())
+    else:
+        return jsonify(wyszukiwarka.generuj_graf_slow(top_k=70))
+
+
+@app.route("/zrodla", methods=["GET"])
+def zrodla():
+    """Zwraca listę dostępnych plików baz wiedzy z folderu /data."""
+    import glob
+    data_dir = os.path.join(BASE_DIR, "data")
+    pliki = [
+        os.path.basename(f)
+        for f in glob.glob(os.path.join(data_dir, "*.json"))
+        if not f.endswith("_cache.pkl")
+    ]
+    return jsonify(pliki)
+
 
 @app.route("/historia", methods=["GET"])
 def historia():
@@ -403,12 +442,68 @@ def historia():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/admin/eksport_csv", methods=["GET"])
+def admin_eksport_csv():
+    # Dynamiczny dump danych analitycznych (P3)
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        return "Brak dostępu!", 403
+    
+    import csv, io
+    from flask import Response
+    from core.bd import polacz, TRYB
+    
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Czas", "Pytanie Uzytkownika", "Tytul Paragrafu", "Podobienstwo", "Odpowiedz Bota", "Ocena Kciuka (-1 zla)"])
+    
+    zapytanie = """
+        SELECT p.czas, p.pytanie, p.tytul, p.podobienstwo, p.odpowiedz, f.ocena 
+        FROM pytania p 
+        LEFT JOIN feedback f ON p.id = f.pytanie_id 
+        ORDER BY p.id DESC
+    """
+    
+    if TRYB == "postgres":
+        with polacz() as conn:
+            with conn.cursor() as cur:
+                cur.execute(zapytanie)
+                for w in cur.fetchall():
+                    writer.writerow([w["czas"], w["pytanie"], w["tytul"], w["podobienstwo"], w["odpowiedz"], w["ocena"]])
+    else:
+        with polacz() as conn:
+            for w in conn.execute(zapytanie).fetchall():
+                writer.writerow([w["czas"], w["pytanie"], w["tytul"], w["podobienstwo"], w["odpowiedz"], w["ocena"]])
+                
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition": "attachment; filename=raport_pytan_pwr.csv"}
+    )
+
+
 @app.route("/admin")
 def admin():
     token = request.args.get("token", "")
+
     if token != ADMIN_TOKEN:
         return "Brak dostępu! Podaj prawidłowy token w adresie, np: /admin?token=dev-token-zmien-mnie", 403
-    return render_template("admin.html", stats=pobierz_statystyki())
+    return render_template("admin.html", stats=pobierz_statystyki(), token=token)
+
+@app.route("/admin/dodaj_synonim", methods=["POST"])
+def admin_dodaj_synonim():
+    dane = request.get_json(force=True)
+    token = dane.get("token", "")
+    if token != ADMIN_TOKEN:
+        return jsonify({"blad": "Brak dostepu"}), 403
+    klucz = dane.get("klucz", "").strip().lower()
+    wartosc = dane.get("wartosc", "").strip().lower()
+    if klucz and wartosc:
+        SYNONIMY[klucz] = wartosc
+        logger.info(f"LIVE ADMIN PANEL: Dodano nowe wiazanie RAM: {klucz} -> {wartosc}")
+        return jsonify({"sukces": True, "komunikat": f"Wstrzyknięto do RAM: {klucz} -> {wartosc} (Działa natychmiastowo!)"})
+    return jsonify({"blad": "Złe dane wejściowe"}), 400
+
 
 
 if __name__ != "__main__":

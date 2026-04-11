@@ -3,19 +3,20 @@ db.py – baza SQLite (lokalnie) lub PostgreSQL/Supabase (produkcja).
 TRYB wykrywany automatycznie przez zmienną środowiskową DATABASE_URL.
 """
 import os
+import sqlite3
+from contextlib import contextmanager
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 TRYB = "postgres" if DATABASE_URL else "sqlite"
 
-from contextlib import contextmanager
 
 if TRYB == "postgres":
     import psycopg2
     from psycopg2.extras import RealDictCursor
     from psycopg2.pool import ThreadedConnectionPool
+
     pg_pool = ThreadedConnectionPool(1, 10, DATABASE_URL)
 else:
-    import sqlite3
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     PLIK_DB = os.path.join(BASE_DIR, "..", "data", "asystent.db")
 

@@ -4,20 +4,28 @@ Glowny program - interfejs rozmowy z asystentem regulaminowym.
 Laczy parser (baza_wiedzy.json) z wyszukiwarka (TF-IDF).
 """
 
-import os
 import json
 import logging
+import os
+import sys
 from datetime import datetime
-from core.wyszukiwarka import Wyszukiwarka
+
+# Ustawienie ścieżki dla modułów lokalnych
+v2_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if v2_root not in sys.path:
+    sys.path.insert(0, v2_root)
+
 from core.formatowanie import formatuj_odpowiedz
+from core.slowniki import ROZSZERZENIA, SYNONIMY
+from core.wyszukiwarka import Wyszukiwarka
 
 
-BASE_DIR  = os.path.dirname(os.path.abspath(__file__))
-PLIK_BAZY = os.path.join(BASE_DIR, "data", "baza_wiedzy.json")
-PLIK_LOG  = os.path.join(BASE_DIR, "logs", "log.txt")
+# Ścieżki zależne od v2_root
+PLIK_BAZY = os.path.join(v2_root, "data", "baza_wiedzy.json")
+PLIK_LOG  = os.path.join(v2_root, "logs", "log.txt")
 PROG_PEWNOSCI = 0.15
 
-os.makedirs(os.path.join(BASE_DIR, "logs"), exist_ok=True)
+os.makedirs(os.path.dirname(PLIK_LOG), exist_ok=True)
 
 # konfiguracja logowania
 logging.basicConfig(
@@ -32,7 +40,7 @@ def main():
 
     # sprawdź czy baza istnieje i nie jest pusta
     if not os.path.exists(PLIK_BAZY):
-        print(f"\n  ❌ Błąd: nie znaleziono '{PLIK_BAZY}'")
+        print(f"\n  [X] Blad: nie znaleziono '{PLIK_BAZY}'")
         print(f"     Uruchom najpierw: python parser.py\n")
         logging.error(f"Brak pliku bazy: {os.path.abspath(PLIK_BAZY)}")
         return
@@ -124,10 +132,6 @@ def main():
             print(f"  Słów w słowniku:    {len(w.idf)}\n")
 
         else:
-            from core.slowniki import ROZSZERZENIA
-
-            pytanie_do_szukania = pytanie
-
             pytanie_do_szukania = pytanie
             for fraza, rozszerzenie in ROZSZERZENIA.items():
                 if fraza in pytanie.lower():
@@ -136,7 +140,6 @@ def main():
 
             # krótkie pytania (1-2 słowa) – rozszerz o kontekst ze słownika synonimów
             if len(pytanie.split()) <= 2:
-                from core.slowniki import SYNONIMY
                 slowo_bazowe = pytanie.strip().lower().rstrip('?!')
 
                 pasujace = [v for k, v in SYNONIMY.items() if slowo_bazowe in k]

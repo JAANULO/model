@@ -2,18 +2,28 @@
 # Uruchomienie: python main.py
 # Szczegoly i architektura: README.md
 
+import hashlib
 import json
 import os
-import hashlib
 import random
-import torch
-torch.backends.cudnn.benchmark = True
-torch.backends.cudnn.enabled   = True
+import sys
 
-import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from shared.transformer import MiniGPT, Adam, URZADZENIE
-from shared.tokenizer   import Tokenizer
+import torch
+
+# Ustawienie ścieżki dla modułów lokalnych
+v2_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if v2_root not in sys.path:
+    sys.path.append(v2_root)
+
+from core.bd import (
+    inicjalizuj,
+    pobierz_statystyki,
+    zapisz_feedback,
+    zapisz_pytanie,
+)
+from core.slowniki import ROZSZERZENIA
+from shared.tokenizer import Tokenizer
+from shared.transformer import Adam, MiniGPT, URZADZENIE
 
 # ============================================================
 # USTAWIENIA
@@ -34,30 +44,25 @@ MAKS_DLUGOSC = 512    # zwiększony – fragment regulaminu to ~400 znaków
 BATCH_SIZE   = 32
 PROG_PEWNOSCI = 0.152 # minimalny wynik BM25 żeby użyć kontekstu
 
-# Pobieramy rozszerzenia z centralnego słownika
-from core.slowniki import ROZSZERZENIA
+# Pobieramy rozszerzenia z centralnego słownika (Przeniesiono na górę)
 
 # ============================================================
 # SQLITE – logi, statystyki, feedback
 # ============================================================
 
 def inicjalizuj_db():
-    from core.bd import inicjalizuj
     inicjalizuj()
 
 
 def zapisz_do_db(pytanie, paragraf, podobienstwo):
-    from core.bd import zapisz_pytanie
     return zapisz_pytanie(pytanie, paragraf, podobienstwo)
 
 
-def zapisz_feedback(pytanie_id, ocena):
-    from core.bd import zapisz_feedback as bd_zapisz_feedback
-    bd_zapisz_feedback(pytanie_id, ocena)
+def zapisz_feedback_db(pytanie_id, ocena):
+    zapisz_feedback(pytanie_id, ocena)
 
 
 def pokaz_statystyki():
-    from core.bd import pobierz_statystyki
     stats = pobierz_statystyki()
 
     print(f"\n  📊 Statystyki sesji:")

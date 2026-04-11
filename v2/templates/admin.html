@@ -104,18 +104,53 @@
 
 <body>
 
-    <h1>Panel Administracyjny</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Panel Administracyjny</h1>
+        <a href="/admin/eksport_csv?token={{ token }}"
+            style="padding: 10px 20px; background: var(--accent2); color: #000; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 14px;">▼
+            Pobierz pełen raport CSV</a>
+    </div>
 
     <div class="grid">
+
         <div class="card">
             <h2>Wszystkie Pytania</h2>
             <p class="big-stat">{{ stats.pytania }}</p>
         </div>
+
         <div class="card">
             <h2>Średnia Trafność</h2>
             <p class="big-stat" style="color: var(--accent2);">{{ stats.srednie_podobienstwo }}<span>%</span></p>
         </div>
+
+        <div class="card">
+            <h2>Live-Słownik Synonimów (Pamięć RAM)</h2>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <input type="text" id="synKlucz" placeholder="Slang (np. kolos)"
+                    style="flex:1; padding: 8px; background: #0d0d0f; border: 1px solid #2a2a32; color: #fff; border-radius: 4px;">
+                <input type="text" id="synWar" placeholder="Formalnie (np. kolokwium)"
+                    style="flex:1; padding: 8px; background: #0d0d0f; border: 1px solid #2a2a32; color: #fff; border-radius: 4px;">
+            </div>
+            <button onclick="dodajSynonim()"
+                style="width: 100%; padding: 8px; background: #c8ff00; border: none; color: #000; font-weight: bold; cursor: pointer; border-radius: 4px;">Wgraj
+                do systemu (bez restartu)</button>
+            <div id="synOdp" style="margin-top: 8px; font-size: 12px; color: #c8ff00; font-family: monospace;"></div>
+            <script>
+                async function dodajSynonim() {
+                    const klucz = document.getElementById('synKlucz').value;
+                    const wartosc = document.getElementById('synWar').value;
+                    if (!klucz || !wartosc) return;
+                    const res = await fetch('/admin/dodaj_synonim', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: '{{ token }}', klucz, wartosc })
+                    });
+                    const d = await res.json();
+                    document.getElementById('synOdp').innerText = d.komunikat || d.blad;
+                }
+            </script>
+        </div>
     </div>
+
 
     <div class="grid">
         <div class="card">

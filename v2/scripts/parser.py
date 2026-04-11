@@ -3,11 +3,12 @@ parser.py - Krok 1 wersji 2.0
 Wczytuje regulamin PDF i dzieli go na fragmenty (paragrafy).
 """
 
-import pdfplumber
-import json
-import re
-import os
 import glob
+import json
+import os
+import re
+
+import pdfplumber
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")

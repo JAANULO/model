@@ -1,0 +1,687 @@
+{
+    "ile razy mozna podejsc do egzaminu": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "co zrobic jak nie zdam egzaminu": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "czy moge zdawac egzamin przed sesja": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "ile dni miedzy pierwszym a drugim terminem": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "kto moze uniewaznic egzamin": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "czy moge poprawic egzamin": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "kiedy jest poprawka egzaminu": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "egzamni": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "co to jest egzamin komisyjny": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "ile mam czasu na wniosek komisyjny": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "kto jest w komisji egzaminacyjnej": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "czy moge miec obserwatora na egzaminie": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "co grozi za nieobecnosci": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "co grozi jak nie chodze na zajecia": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "ile nieobecnosci mozna miec": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "mam 3 nieobecnosci czy to duzo": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "jak usprawiedliwic nieobecnosc": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "kto ustala limit nieobecnosci": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "jakie sa oceny w regulaminie": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "ile procent na piatke": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "ile procent na czworke": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "ile procent na trojke": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "ile procent na cztery i pol": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "jaka jest najnizsza ocena zaliczajaca": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "kiedy mozna wziac urlop dziekanski": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "urlop zdrowotny jak dostac": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "czy moge wziac urlop bo jestem w ciazy": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "ile urlopow dziekanskich moge wziac": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "czy podczas urlopu mam prawa studenta": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "urlop?": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "kiedy mozna zostac skreslanym": {
+        "oczekiwany": "Skreśl",
+        "otrzymany": "§ 33. Skreślenia z listy studentów",
+        "sukces": true
+    },
+    "jak zlozyc rezygnacje ze studiow": {
+        "oczekiwany": "Skreśl",
+        "otrzymany": "§ 33. Skreślenia z listy studentów",
+        "sukces": true
+    },
+    "co grozi za niezapisanie sie na zajecia": {
+        "oczekiwany": "Skreśl",
+        "otrzymany": "§ 33. Skreślenia z listy studentów",
+        "sukces": true
+    },
+    "jak wznowic studia po skreslanym": {
+        "oczekiwany": "Wznow",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "ile razy mozna wznowic studia": {
+        "oczekiwany": "Wznow",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "ile mam czasu na wznowienie studiow": {
+        "oczekiwany": "Wznow",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "jak wznowic studia": {
+        "oczekiwany": "Wznow",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "co to jest powtarzanie przedmiotu": {
+        "oczekiwany": "Powtarz",
+        "otrzymany": "§ 22. Powtarzanie przedmiotu",
+        "sukces": true
+    },
+    "ile razy mozna powtarzac przedmiot": {
+        "oczekiwany": "Powtarz",
+        "otrzymany": "§ 22. Powtarzanie przedmiotu",
+        "sukces": true
+    },
+    "czy powtarzanie jest platne": {
+        "oczekiwany": "Powtarz",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": false
+    },
+    "kiedy mozna powtarzac semestr": {
+        "oczekiwany": "Powtarz",
+        "otrzymany": "§ 22. Powtarzanie przedmiotu",
+        "sukces": true
+    },
+    "jak wyglada praca dyplomowa": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "ile osob moze pisac wspolna prace": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "czy praca jest sprawdzana antyplagiatem": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "w jakim jezyku pisze sie prace dyplomowa": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "kto to jest promotor": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "jak dlugo trwa semestr": {
+        "oczekiwany": "Organ",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "ile tygodni ma semestr": {
+        "oczekiwany": "Organ",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "kiedy konczy sie sesja letnia": {
+        "oczekiwany": "Organ",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "ile dni trwa sesja egzaminacyjna": {
+        "oczekiwany": "Organ",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "jak oblicza sie srednia ocen": {
+        "oczekiwany": "Skala ocen",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "kiedy dostane wyróznienie": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "jak liczona jest ocena koncowa studiow": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "ile wazy ocena z pracy dyplomowej": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "jak policzyc koncowy wynik studiow": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "czy ocena pracy dyplomowej liczy sie do wyniku": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "jak wyglada praktyka zawodowa": {
+        "oczekiwany": "Praktyk",
+        "otrzymany": "§ 23. Praktyki zawodowe",
+        "sukces": true
+    },
+    "czy moge zaliczyc praktyke bez odbywania": {
+        "oczekiwany": "Praktyk",
+        "otrzymany": "§ 23. Praktyki zawodowe",
+        "sukces": true
+    },
+    "ak liczona jest ocena koncowa studiow": {
+        "oczekiwany": "Oceny za",
+        "otrzymany": "§ 38. Oceny za studia, ostateczny wynik studiów",
+        "sukces": true
+    },
+    "czy da sie miec obserwatora na egzaminie": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "jak wznowic studia po skresleniu": {
+        "oczekiwany": "Wznow",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "czy praca dyplomowa ma antyplagiat": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "jaka jest skala ocen": {
+        "oczekiwany": "Skala",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "ile dni miedzy terminami egzaminu": {
+        "oczekiwany": "Egzamin",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": true
+    },
+    "ile trzeba miec ects zeby zdac": {
+        "oczekiwany": "Deficyt",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": false
+    },
+    "jaki jest dopuszczalny deficyt punktowy": {
+        "oczekiwany": "Deficyt",
+        "otrzymany": "§ 9. Program studiów, plan studiów, cykl kształcenia i etapy studiów",
+        "sukces": false
+    },
+    "co jak zabraknie mi punktow ects": {
+        "oczekiwany": "Deficyt",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "czy moge przejsc na kolejny semestr z dlugiem ects": {
+        "oczekiwany": "Deficyt",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "kiedy jest wpis na semestr": {
+        "oczekiwany": "Warunki i tryb zali",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "kiedy dziekan moze mnie skreslic": {
+        "oczekiwany": "Skreślenie",
+        "otrzymany": "§ 33. Skreślenia z listy studentów",
+        "sukces": false
+    },
+    "nie zaplacilem za warunek co teraz": {
+        "oczekiwany": "Skreślenie",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": false
+    },
+    "za co uiszcza sie oplaty": {
+        "oczekiwany": "Opłaty",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": false
+    },
+    "czy powtarzanie semestru jest platne": {
+        "oczekiwany": "Opłaty",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": false
+    },
+    "czy odwolanie od skreslenia jest darmowe": {
+        "oczekiwany": "Skreślenie",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": false
+    },
+    "jak zmienic promotora pracy": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "kto recenzuje prace dyplomowa": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": true
+    },
+    "kiedy wolno zdawac egzamin dyplomowy": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": false
+    },
+    "co jesli recenzent wystawi ocene niedostateczna z dyplomu": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "kiedy mozna przedluzyc termin zlozenia dyplomu": {
+        "oczekiwany": "Dyplom",
+        "otrzymany": "§ 39. Ukończenie studiów",
+        "sukces": false
+    },
+    "ile czasu trwa egzamin inzynierski": {
+        "oczekiwany": "Egzamin dypl",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "skreslili mnie rok temu czy moge wrocic": {
+        "oczekiwany": "Wznowienia",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "na ile mozna wziac urlop bez podania przyczyny": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "jak napisać podanie o urlop dziekanski": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 27. Urlopy",
+        "sukces": true
+    },
+    "czy moge zrezygnowac ze studiow na pierwszym semestrze i wrocic za rok": {
+        "oczekiwany": "Wznowien",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "ectsys": {
+        "oczekiwany": "Deficyt",
+        "otrzymany": "BRAK",
+        "sukces": false
+    },
+    "srednia stypedndiowa": {
+        "oczekiwany": "Skala ocen",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": true
+    },
+    "wznwienie studjuf": {
+        "oczekiwany": "Wznowien",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": true
+    },
+    "dzikanka z powodu choroby": {
+        "oczekiwany": "Urlop",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": false
+    },
+    "czy prowadzacy musi dac sylabus": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 13. Przedmioty i zajęcia",
+        "sukces": false
+    },
+    "kto ustanawia kryteria zaliczenia": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 24. Realizacja przedmiotów nieobjętych programem studiów",
+        "sukces": true
+    },
+    "ile lat ma sie na ukonczenie studiow inzynierskich": {
+        "oczekiwany": "Okres nauki",
+        "otrzymany": "§ 34. Wznowienia studiów, przywrócenie praw studenta",
+        "sukces": false
+    },
+    "jak usprawiedliwic nieobecnosc w 24 godziny": {
+        "oczekiwany": "Realizacja",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": true
+    },
+    "kto w ustala harmonogram sesji": {
+        "oczekiwany": "Organizacja",
+        "otrzymany": "§ 18. Egzaminy",
+        "sukces": false
+    },
+    "kto moze byc obecny na warunku": {
+        "oczekiwany": "komisyjny",
+        "otrzymany": "§ 21. Egzamin komisyjny",
+        "sukces": true
+    },
+    "kiedy nastepuje zamkniecie indeksu": {
+        "oczekiwany": "Oceny",
+        "otrzymany": "§ 4. Przyjęcie na studia, status studenta",
+        "sukces": false
+    },
+    "jak zostac studentem pwr": {
+        "oczekiwany": "Przyjęcie na studia",
+        "otrzymany": "§ 31. Studia na kolejnym kierunku studiów",
+        "sukces": false
+    },
+    "jak sie zapisac na studia": {
+        "oczekiwany": "Przyjęcie na studia",
+        "otrzymany": "§ 14. Zapisy (rejestracja) na zajęcia",
+        "sukces": false
+    },
+    "jakie sa prawa studenta": {
+        "oczekiwany": "Prawa studenta",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": false
+    },
+    "co student moze robic na uczelni": {
+        "oczekiwany": "Prawa studenta",
+        "otrzymany": "§ 31. Studia na kolejnym kierunku studiów",
+        "sukces": false
+    },
+    "jakie sa obowiazki studenta": {
+        "oczekiwany": "Obowiązki studenta",
+        "otrzymany": "§ 7. Obowiązki studenta",
+        "sukces": true
+    },
+    "co grozi za niewywiazywanie sie z obowiazkow": {
+        "oczekiwany": "Obowiązki studenta",
+        "otrzymany": "§ 6. Prawa studenta",
+        "sukces": false
+    },
+    "czym jest etap studiow": {
+        "oczekiwany": "etapy studiów",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "ile etapow ma studia inzynierskie": {
+        "oczekiwany": "Program studiów",
+        "otrzymany": "§ 3. Kierunki, poziomy, profile i formy studiów",
+        "sukces": false
+    },
+    "czym jest plan studiow": {
+        "oczekiwany": "Program studiów",
+        "otrzymany": "§ 9. Program studiów, plan studiów, cykl kształcenia i etapy studiów",
+        "sukces": true
+    },
+    "ile punktow ects ma rok studiow": {
+        "oczekiwany": "Punkty ECTS",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "co to jest punkt ects": {
+        "oczekiwany": "Punkty ECTS",
+        "otrzymany": "§ 10. Punkty ECTS",
+        "sukces": true
+    },
+    "ile ects mam zrobic zeby zdac rok": {
+        "oczekiwany": "Punkty ECTS",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "kiedy zaczyna sie rok akademicki": {
+        "oczekiwany": "Organizacja roku",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "ile trwa rok akademicki": {
+        "oczekiwany": "Organizacja roku",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "ile tygodni trwa semestr zimowy": {
+        "oczekiwany": "Organizacja roku",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": true
+    },
+    "czy studia stacjonarne sa platne": {
+        "oczekiwany": "Odpłatność",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": true
+    },
+    "jak uiszcza sie oplaty za studia": {
+        "oczekiwany": "Odpłatność",
+        "otrzymany": "§ 12. Odpłatność za usługi edukacyjne",
+        "sukces": true
+    },
+    "jak sie zapisac na przedmiot": {
+        "oczekiwany": "Zapisy",
+        "otrzymany": "§ 14. Zapisy (rejestracja) na zajęcia",
+        "sukces": true
+    },
+    "co to jest rejestracja na zajecia": {
+        "oczekiwany": "Zapisy",
+        "otrzymany": "§ 14. Zapisy (rejestracja) na zajęcia",
+        "sukces": true
+    },
+    "czy mozna zaliczyc przedmiot z innej uczelni": {
+        "oczekiwany": "Przenoszenie",
+        "otrzymany": "§ 26. Zaliczenie etapu studiów",
+        "sukces": false
+    },
+    "jak przeniesc zaliczenie z innego wydzialu": {
+        "oczekiwany": "Przenoszenie",
+        "otrzymany": "§ 16. Realizacja zajęć",
+        "sukces": false
+    },
+    "co to jest zaliczenie bez oceny": {
+        "oczekiwany": "Zaliczanie przedmiotu",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "ile razy mozna poprawiac zaliczenie": {
+        "oczekiwany": "Zaliczanie przedmiotu",
+        "otrzymany": "§ 26. Zaliczenie etapu studiów",
+        "sukces": false
+    },
+    "ile razy moge powtarzac ten sam przedmiot": {
+        "oczekiwany": "Powtarzanie przedmiotu",
+        "otrzymany": "§ 22. Powtarzanie przedmiotu",
+        "sukces": true
+    },
+    "ile tygodni trwaja praktyki zawodowe": {
+        "oczekiwany": "Praktyki zawodowe",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "kto moze zwolnic z praktyk": {
+        "oczekiwany": "Praktyki zawodowe",
+        "otrzymany": "§ 15. Przenoszenie i uznawanie przedmiotów",
+        "sukces": false
+    },
+    "czy praca zawodowa zalicza sie jako praktyka": {
+        "oczekiwany": "Praktyki zawodowe",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": false
+    },
+    "jak sie rozlicza semestr": {
+        "oczekiwany": "Rozliczanie etapu",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "co to jest ios na studiach": {
+        "oczekiwany": "Indywidualna organizacja",
+        "otrzymany": "§ 8. Studenci ze szczególnymi potrzebami, standardy ochrony małoletnich",
+        "sukces": false
+    },
+    "kto moze wnioskowac o indywidualny plan": {
+        "oczekiwany": "Indywidualna organizacja",
+        "otrzymany": "§ 9. Program studiów, plan studiów, cykl kształcenia i etapy studiów",
+        "sukces": false
+    },
+    "czy mozna przeniesc sie z innej uczelni": {
+        "oczekiwany": "Przeniesienia z innej",
+        "otrzymany": "§ 30. Przeniesienia z innej uczelni. Zmiana wydziału, kierunku, profilu i formy studiów",
+        "sukces": true
+    },
+    "jak zmienic uczelnie w trakcie studiow": {
+        "oczekiwany": "Przeniesienia z innej",
+        "otrzymany": "§ 28. Powtarzanie etapu studiów",
+        "sukces": false
+    },
+    "jak sie oblicza ostateczny wynik studiow": {
+        "oczekiwany": "Oceny za studia",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "jak liczona jest srednia na dyplomie": {
+        "oczekiwany": "Oceny za studia",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "kiedy dostaje dyplom ukonczenia": {
+        "oczekiwany": "Ukończenie studiów",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": false
+    },
+    "co zawiera dyplom ukonczenia studiow": {
+        "oczekiwany": "Ukończenie studiów",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": false
+    },
+    "kiedy mozna odebrac dyplom": {
+        "oczekiwany": "Ukończenie studiów",
+        "otrzymany": "§ 35. Praca dyplomowa",
+        "sukces": false
+    },
+    "ile trwa wydanie dyplomu": {
+        "oczekiwany": "Ukończenie studiów",
+        "otrzymany": "§ 11. Organizacja roku akademickiego",
+        "sukces": false
+    },
+    "co to jest tok studiow": {
+        "oczekiwany": "Słownik",
+        "otrzymany": "§ 2. Słownik pojęć",
+        "sukces": true
+    },
+    "co oznacza pojecie student w regulaminie": {
+        "oczekiwany": "Słownik",
+        "otrzymany": "§ 19. Skala ocen",
+        "sukces": false
+    },
+    "czym jest absolwent w rozumieniu regulaminu": {
+        "oczekiwany": "Słownik",
+        "otrzymany": "§ 39. Ukończenie studiów",
+        "sukces": false
+    },
+    "co to jest edukacja cl na pwr": {
+        "oczekiwany": "Systemy komunikacji",
+        "otrzymany": "§ 5. Systemy komunikacji i obsługi elektronicznej toku studiów",
+        "sukces": true
+    }
+}

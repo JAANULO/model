@@ -2,8 +2,17 @@
 formatowanie.py - przyjazne odpowiedzi na podstawie fragmentu regulaminu
 """
 
-import re
+import os
 import random
+import re
+import sys
+
+try:
+    from core.slowniki import ROZSZERZENIA
+    from core.wyszukiwarka import tokenizuj as _tokenizuj
+except ImportError:
+    from .slowniki import ROZSZERZENIA
+    from .wyszukiwarka import tokenizuj as _tokenizuj
 
 
 # ── słowa kluczowe do wykrywania tematu pytania ───────────────────────────────
@@ -189,10 +198,7 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki, najlepsze_zdanie=None, skrot
         "urlop":      ["urlop zdrowotny", "urlop dziekański", "udziela"],
     }
 
-    # tokenizuj pytanie lokalnie – unikamy importu cyklicznego przez lazy import
-    from core.wyszukiwarka import tokenizuj as _tokenizuj
-
-    zdania = None
+    tokeny_pyt = _tokenizuj(pytanie)
     if 'Skala ocen' in tytul or 'skala ocen' in tytul:
         zdania = [wyciagnij_skale_ocen(tresc)]
     else:
@@ -201,11 +207,6 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki, najlepsze_zdanie=None, skrot
             if fraza in pytanie.lower():
                 slowa = kluczowe
                 break
-        tokeny_pyt = _tokenizuj(pytanie)
-        try:
-            from core.wyszukiwarka import tokenizuj as _tokenizuj
-        except ImportError:
-            from wyszukiwarka import tokenizuj as _tokenizuj
         tokeny_pyt = _tokenizuj(pytanie)
         zdania = wyciagnij_zdania(tresc, max_zdan=3, szukaj=slowa, pytanie_tokeny=tokeny_pyt)
 
@@ -243,7 +244,6 @@ def formatuj_odpowiedz(pytanie, wynik_wyszukiwarki, najlepsze_zdanie=None, skrot
 # ── test ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import sys, os
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     sys.path.insert(0, os.path.join(BASE_DIR, ".."))
     from core.wyszukiwarka import Wyszukiwarka

@@ -11,7 +11,24 @@ Klucz API Gemini (darmowy): https://aistudio.google.com/app/apikey
 Ustaw w pliku .env:  GEMINI_API_KEY=twój_klucz
 """
 
-import os, sys, json, time, re
+import json
+import os
+import re
+import sys
+import time
+
+try:
+    from google import genai
+except ImportError:
+    print("Zainstaluj: pip install google-genai")
+    sys.exit(1)
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+from core.wyszukiwarka import Wyszukiwarka
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = (
@@ -21,20 +38,8 @@ PROJECT_ROOT = (
 )
 sys.path.insert(0, PROJECT_ROOT)
 
-
-try:
-    from dotenv import load_dotenv
+if load_dotenv:
     load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-except ImportError:
-    pass
-
-try:
-    from google import genai
-except ImportError:
-    print("Zainstaluj: pip install google-genai")
-    sys.exit(1)
-
-from core.wyszukiwarka import Wyszukiwarka
 
 # ── konfiguracja ──────────────────────────────────────────────
 API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -108,8 +113,8 @@ o regulamin studiów. Pytania muszą dotyczyć tych paragrafów:
 
 Pisz pytania potocznie i różnorodnie, np:
 - "co mi grozi jak obleje egzamin"
-- "ile razy moge powtarzac przedmiot"
-- "kiedy moge wziac wolne od studiow"
+- "ile razy mozna powtarzac przedmiot"
+- "kiedy mozna wziac wolne od studiow"
 
 Zwróć TYLKO listę JSON bez żadnego dodatkowego tekstu:
 ["pytanie 1", "pytanie 2", ...]"""

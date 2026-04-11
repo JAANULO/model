@@ -3,40 +3,226 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Kosmiczna Mapa Paragrafów</title>
-  <!-- Vis.js ciągniemy z serwera, żeby odciążyć twój RAM plikami lokalnymi -->
+  <title>Mapa Wiedzy – Asystent Regulaminowy</title>
   <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <style>
-    body,
-    html {
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
+    }
+
+    body,
+    html {
       width: 100%;
       height: 100%;
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: 'Inter', system-ui, sans-serif;
       overflow: hidden;
     }
 
-    h2 {
+    /* ── Nagłówek ── */
+    #topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: linear-gradient(180deg, rgba(10, 10, 15, 0.95) 0%, transparent 100%);
+      pointer-events: none;
+    }
+
+    #topbar .title {
+      pointer-events: none;
+    }
+
+    #topbar .title h2 {
+      font-size: 17px;
+      color: #c8ff00;
+      font-weight: 600;
+    }
+
+    #topbar .title span {
+      font-size: 12px;
+      color: #666;
+      margin-top: 2px;
+      display: block;
+    }
+
+    /* ── Przyciski trybu ── */
+    #tryb-btns {
       position: absolute;
       top: 15px;
-      left: 25px;
-      z-index: 10;
-      color: #ccc;
-      pointer-events: none;
-      margin: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      gap: 4px;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 4px;
+      pointer-events: all;
     }
 
-    h2 span {
-      font-size: 14px;
+    .tryb-btn {
+      padding: 6px 16px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      background: transparent;
       color: #888;
-      font-weight: normal;
-      display: block;
-      margin-top: 5px;
     }
 
+    .tryb-btn.active {
+      background: #c8ff00;
+      color: #000;
+    }
+
+    /* ── Guzik Ustawień (prawy górny) ── */
+    #btn-ustawienia {
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      z-index: 30;
+      pointer-events: all;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #aaa;
+      border-radius: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #btn-ustawienia:hover {
+      background: rgba(200, 255, 0, 0.1);
+      color: #c8ff00;
+      border-color: #c8ff00;
+    }
+
+    /* ── Panel Ustawień ── */
+    #panel-ustawien {
+      position: absolute;
+      top: 55px;
+      right: 20px;
+      z-index: 40;
+      width: 300px;
+      background: rgba(15, 15, 22, 0.97);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 18px;
+      display: none;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    #panel-ustawien.open {
+      display: block;
+    }
+
+    #panel-ustawien h3 {
+      font-size: 13px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    #panel-ustawien .sekcja {
+      margin-bottom: 18px;
+    }
+
+    #panel-ustawien .sekcja-tytul {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Suwak Toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .toggle-row:last-child {
+      border-bottom: none;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    .toggle-sub {
+      font-size: 11px;
+      color: #555;
+      margin-top: 1px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #2a2a35;
+      border-radius: 22px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .toggle-slider:before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #555;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+      background: rgba(200, 255, 0, 0.25);
+    }
+
+    .toggle-switch input:checked+.toggle-slider:before {
+      transform: translateX(18px);
+      background: #c8ff00;
+    }
+
+    /* ── Sieć ── */
     #network-map {
       width: 100%;
       height: 100%;
@@ -45,36 +231,238 @@
     .vis-network:focus {
       outline: none;
     }
+
+    /* ── Ładowanie ── */
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      font-size: 14px;
+      color: #555;
+    }
+
+    /* ── Info krawędź/węzeł ── */
+    #info-box {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 30;
+      background: rgba(15, 15, 22, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 12px;
+      color: #aaa;
+      max-width: 320px;
+      display: none;
+    }
+
+    #info-box strong {
+      color: #c8ff00;
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+    }
   </style>
 </head>
 
 <body>
-  <h2>Globalna Siatka Słów PDF 🕸️<br><span>Najczęstsze skojarzenia słów. Oddal scroll by zobaczyć całość!</span></h2>
+
+  <!-- Nagłówek -->
+  <div id="topbar">
+    <div class="title">
+      <h2>🕸️ Mapa Wiedzy PDF</h2>
+      <span id="podtytul">Ładowanie...</span>
+    </div>
+  </div>
+
+  <!-- Przełącznik trybu -->
+  <div id="tryb-btns">
+    <button class="tryb-btn active" id="btn-slowa" onclick="zmienTryb('slowa')">🔤 Słowa</button>
+    <button class="tryb-btn" id="btn-paragrafy" onclick="zmienTryb('paragrafy')">📄 Paragrafy</button>
+  </div>
+
+  <!-- Przycisk ustawień -->
+  <!--  <button id="btn-ustawienia" onclick="togglePanel()">⚙️ Ustawienia</button> -->
+
+  <!-- Panel ustawień -->
+  <div id="panel-ustawien">
+    <h3>⚙️ Ustawienia</h3>
+
+    <div class="sekcja">
+      <div class="sekcja-tytul">📚 Wczytane bazy wiedzy</div>
+      <div id="lista-baz">
+        <div style="color:#555; font-size:12px;">Ładowanie listy baz...</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Sieć -->
+  <div id="loading">Szykuję dane...</div>
   <div id="network-map"></div>
 
-  <script>
-    async function odpalSymulacjeFizyczna() {
-      const grawitacjaDiv = document.getElementById('network-map');
-      grawitacjaDiv.innerHTML = '<div style="padding:40px; color:#555;">Szykuje Setki Wyrazów z Całości Tekstu! Trzymaj się...</div>';
-      try {
-        const odp = await fetch('/graf_wektorowy'); // Architektura przeszła na czysty protokół GET (odpytywanie całej bazy bez payloadów)
-        const daneAlgorytmu = await odp.json();
-        grawitacjaDiv.innerHTML = '';
+  <!-- Info-box po kliknięciu węzła -->
+  <div id="info-box">
+    <strong id="info-tytul">—</strong>
+    <span id="info-tresc">—</span>
+  </div>
 
-        if (!daneAlgorytmu.nodes || daneAlgorytmu.nodes.length === 0) {
-          grawitacjaDiv.innerHTML = '<div style="padding:40px;">Brak słów w bazie danych. PDF jest pusty lub nieudany!</div>'; return;
-        }
-        const OpcjeVis = {
-          nodes: { font: { color: '#bbb', face: 'Trebuchet MS', strokeWidth: 0 }, borderWidth: 0 },
-          edges: { smooth: { type: "continuous" } },
-          physics: { barnesHut: { gravitationalConstant: -2000, centralGravity: 0.1, springLength: 90 } } // Skrócenie dystansu by gąszcze pojęć się zlepiały
-        };
-        new vis.Network(grawitacjaDiv, { nodes: new vis.DataSet(daneAlgorytmu.nodes), edges: new vis.DataSet(daneAlgorytmu.edges) }, OpcjeVis);
-      } catch (err) {
-        console.error("Awaria czujników wektorowych:", err);
+  <script>
+    let siec = null;
+    let aktualnyTryb = 'slowa';
+    let panelOtwarty = false;
+    let aktywneZrodla = new Set(['baza_wiedzy.json']); // domyślnie wszystkie
+
+    // ─── Panel ustawień ───────────────────────────────────────────
+    function togglePanel() {
+      panelOtwarty = !panelOtwarty;
+      document.getElementById('panel-ustawien').classList.toggle('open', panelOtwarty);
+      if (panelOtwarty) zaladujListeBaz();
+    }
+
+    async function zaladujListeBaz() {
+      const lista = document.getElementById('lista-baz');
+      try {
+        const res = await fetch('/zrodla');
+        const pliki = await res.json();
+        aktywneZrodla = new Set(pliki); // na start wszystkie aktywne
+
+        lista.innerHTML = pliki.map(plik => `
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">📄 ${plik}</div>
+              <div class="toggle-sub">${plik === 'baza_wiedzy.json' ? 'Regulamin Studiów PWr' : 'Baza pomocnicza'}</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked data-plik="${plik}" onchange="przelaczBaze(this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        `).join('');
+      } catch (e) {
+        lista.innerHTML = '<div style="color:#f55; font-size:12px;">Błąd ładowania baz.</div>';
       }
     }
-    odpalSymulacjeFizyczna();
+
+    function przelaczBaze(checkbox) {
+      const plik = checkbox.dataset.plik;
+      if (checkbox.checked) aktywneZrodla.add(plik);
+      else aktywneZrodla.delete(plik);
+      // Info w czacie o aktywnych bazach – odśwież dropdown w index.html jeśli jest
+      console.log('Aktywne bazy:', [...aktywneZrodla]);
+    }
+
+    // ─── Przełącznik trybu ────────────────────────────────────────
+    function zmienTryb(tryb) {
+      aktualnyTryb = tryb;
+      document.getElementById('btn-slowa').classList.toggle('active', tryb === 'slowa');
+      document.getElementById('btn-paragrafy').classList.toggle('active', tryb === 'paragrafy');
+      zaladujGraf();
+    }
+
+    // ─── Ustawienia sieci ─────────────────────────────────────────
+    function przelaczFizyke() {
+      if (!siec) return;
+      const wl = document.getElementById('toggle-fizyka').checked;
+      siec.setOptions({ physics: { enabled: wl } });
+    }
+
+    function przelaczEtykiety() {
+      if (!siec) return;
+      const wl = document.getElementById('toggle-etykiety').checked;
+      // Zmiana rozmiaru czcionki etykiet
+      siec.setOptions({ nodes: { font: { size: wl ? 13 : 0 } } });
+    }
+
+    // ─── Ładowanie grafu ─────────────────────────────────────────
+    async function zaladujGraf() {
+      document.getElementById('loading').style.display = 'flex';
+      document.getElementById('info-box').style.display = 'none';
+      if (siec) { siec.destroy(); siec = null; }
+
+      try {
+        const res = await fetch(`/graf_wektorowy?tryb=${aktualnyTryb}`);
+        const dane = await res.json();
+        document.getElementById('loading').style.display = 'none';
+
+        if (!dane.nodes || dane.nodes.length === 0) {
+          document.getElementById('loading').style.display = 'flex';
+          document.getElementById('loading').textContent = 'Brak danych do wyświetlenia.';
+          return;
+        }
+
+        // Aktualizuj podtytuł
+        const opis = aktualnyTryb === 'slowa'
+          ? `${dane.nodes.length} słów · ${dane.edges.length} powiązań bigramowych`
+          : `${dane.nodes.length} paragrafów · ${dane.edges.length} relacji semantycznych`;
+        document.getElementById('podtytul').textContent = opis;
+
+        // Opcje Vis.js zależne od trybu
+        const opcjeVis = {
+          nodes: {
+            font: { color: '#bbb', face: 'Inter, sans-serif', size: 13, strokeWidth: 0 },
+            borderWidth: 0,
+          },
+          edges: {
+            smooth: { type: 'continuous' },
+            color: { color: 'rgba(200,255,0,0.2)', highlight: '#c8ff00' },
+          },
+          physics: {
+            barnesHut: {
+              gravitationalConstant: aktualnyTryb === 'paragrafy' ? -5000 : -2000,
+              centralGravity: aktualnyTryb === 'paragrafy' ? 0.3 : 0.1,
+              springLength: aktualnyTryb === 'paragrafy' ? 160 : 90,
+            }
+          },
+          interaction: { hover: true, tooltipDelay: 100 },
+        };
+
+        // Dla paragrafów dostosuj kolor krawędzi wg wagi semantycznej
+        let krawedzie = dane.edges;
+        if (aktualnyTryb === 'paragrafy') {
+          krawedzie = dane.edges.map(e => ({
+            ...e,
+            width: Math.max(1, (e.value || 0) * 8),
+            title: `Podobieństwo: ${((e.value || 0) * 100).toFixed(1)}%`,
+          }));
+        }
+
+        const kontener = document.getElementById('network-map');
+        siec = new vis.Network(
+          kontener,
+          { nodes: new vis.DataSet(dane.nodes), edges: new vis.DataSet(krawedzie) },
+          opcjeVis
+        );
+
+        // Kliknięcie węzła → info-box
+        siec.on('click', function (params) {
+          if (params.nodes.length > 0) {
+            const id = params.nodes[0];
+            const wezel = dane.nodes.find(n => n.id === id);
+            const box = document.getElementById('info-box');
+            document.getElementById('info-tytul').textContent = wezel?.label || id;
+            document.getElementById('info-tresc').textContent =
+              aktualnyTryb === 'paragrafy'
+                ? `Paragraf: ${id}`
+                : `Słowo kluczowe — kliknij inny węzeł by zobaczyć powiązania`;
+            box.style.display = 'block';
+          } else {
+            document.getElementById('info-box').style.display = 'none';
+          }
+        });
+
+      } catch (err) {
+        document.getElementById('loading').textContent = '⚠️ Błąd ładowania danych z serwera.';
+        console.error(err);
+      }
+    }
+
+    // Start
+    zaladujGraf();
   </script>
 </body>
 

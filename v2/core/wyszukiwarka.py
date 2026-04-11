@@ -4,21 +4,23 @@ Algorytm TF-IDF napisany od zera.
 Wyszukuje w bazie wiedzy fragment najbardziej pasujacy do pytania.
 """
 
+import glob
 import json
 import math
-import re
 import os
-import glob
+import pickle
+import re
 import time
+from collections import Counter
 
 try:
-    from .bd import pobierz_wspolczynniki_zbiorczo
-    from .slowniki import SYNONIMY, ROZSZERZENIA
-    from .stemmer import stemuj
+    from core.bd import pobierz_wspolczynniki_zbiorczo
+    from core.slowniki import ROZSZERZENIA, SYNONIMY
+    from core.stemmer import stemuj
 except ImportError:
-    from bd import pobierz_wspolczynniki_zbiorczo
-    from slowniki import SYNONIMY, ROZSZERZENIA
-    from stemmer import stemuj
+    from .bd import pobierz_wspolczynniki_zbiorczo
+    from .slowniki import ROZSZERZENIA, SYNONIMY
+    from .stemmer import stemuj
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 MAPA_WAG_TTL = 60
@@ -214,7 +216,6 @@ def podobienstwo_cosinusowe(wektor_a, wektor_b):
 class Wyszukiwarka:
 
     def __init__(self, plik_bazy):
-        import pickle
 
         if os.path.isdir(plik_bazy):
             self.data_dir = plik_bazy
@@ -267,12 +268,18 @@ class Wyszukiwarka:
                 self.idf, self.wektory, self.wszystkie_tokeny = pickle.load(f)
         else:
             print("Budowanie indeksu TF-IDF...")
-            self.wszystkie_tokeny = [tokenizuj(f['tresc']) for f in self.fragmenty]
+            self.wszystkie_tokeny = []
+            for f in self.fragmenty:
+                # Ważenie tytułów: Powielenie tytułu 3x w tekście sztucznie podnosi mu wektory w BM25
+                sklejka = (f['tytul'] + " ") * 3 + f['tresc']
+                self.wszystkie_tokeny.append(tokenizuj(sklejka))
+
             self.idf     = oblicz_idf(self.wszystkie_tokeny)
             self.wektory = zbuduj_wektory(self.wszystkie_tokeny, self.idf)
             with open(cache, 'wb') as f:
                 pickle.dump((self.idf, self.wektory, self.wszystkie_tokeny), f)
             print("   Zapisano cache")
+
 
         print(f"   Zaindeksowano {len(self.fragmenty)} fragmentow")
         print(f"   Slownik: {len(self.idf)} unikalnych slow\n")
@@ -292,7 +299,6 @@ class Wyszukiwarka:
         if hasattr(self, cache_key):
             return getattr(self, cache_key)
             
-        from collections import Counter
         bigramy = Counter()
         wystapienia_wezlow = Counter()
         
@@ -352,9 +358,38 @@ class Wyszukiwarka:
                 }
         return None
 
-    def szukaj(self, pytanie, n_wynikow=1):
+    def generuj_graf_paragrafow(self):
+        """Generuje siatkę relacji między paragrafami na podstawie podobieństwa wektorowego."""
+        cache_key = "_graf_paragrafow_cache"
+        if hasattr(self, cache_key):
+            return getattr(self, cache_key)
+
+        nodes = []
+        for frag in self.fragmenty:
+            etykieta = frag['tytul'][:35].rstrip() + ("..." if len(frag['tytul']) > 35 else "")
+            nodes.append({"id": frag['tytul'], "label": etykieta, "shape": "dot", "size": 18, "color": "#007aff",
+                          "font": {"color": "#aaa", "size": 11}})
+
+        edges = []
+        for i in range(len(self.wektory)):
+            for j in range(i + 1, len(self.wektory)):
+                pod = podobienstwo_cosinusowe(self.wektory[i], self.wektory[j])
+                if pod > 0.15:
+                    edges.append({
+                        "from": self.fragmenty[i]['tytul'],
+                        "to":   self.fragmenty[j]['tytul'],
+                        "value": round(pod, 3),
+                        "color": {"color": "rgba(200,255,0,0.3)", "highlight": "#c8ff00"}
+                    })
+
+        wynik = {"nodes": nodes, "edges": edges}
+        setattr(self, cache_key, wynik)
+        return wynik
+
+    def szukaj(self, pytanie, n_wynikow=1, zrodlo=None):
         """
-        dla podanego pytania zwraca n najbardziej pasujacych fragmentow.
+        Dla podanego pytania zwraca n najbardziej pasujacych fragmentow.
+        Parametr zrodlo filtruje wyniki do wybranej bazy (dropdown z GUI).
         """
         # Szybka ścieżka: zapytanie o konkretny paragraf bez BM25
         numer_paragrafu = self.wykryj_numer_paragrafu(pytanie)
@@ -404,15 +439,22 @@ class Wyszukiwarka:
 
         wyniki.sort(reverse=True)
 
-        return [
+        kandydaci = [
             {
                 "tytul":        self.fragmenty[i]['tytul'],
                 "tresc":        self.fragmenty[i]['tresc'],
                 "podobienstwo": round(podobienstwo, 4),
                 "zrodlo":       self.fragmenty[i].get('zrodlo'),
             }
-            for podobienstwo, i in wyniki[:n_wynikow]
+            for podobienstwo, i in wyniki
+            if podobienstwo > 0
         ]
+
+        # Filtrowanie po zrodle (dropdown z frontendu)
+        if zrodlo and zrodlo not in ("Wszystkie dokumenty", "odlacz", "", None):
+            kandydaci = [k for k in kandydaci if k.get('zrodlo') == zrodlo]
+
+        return kandydaci[:n_wynikow]
 
 
 # ── Test ──────────────────────────────────────────────────────────────────────

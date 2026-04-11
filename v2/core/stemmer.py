@@ -50,15 +50,34 @@ KONCOWKI = [
 # Chroni przed obcięciem całego słowa np. "om" → ""
 MIN_RDZEN = 4
 
+# Słownik sztywnych koninkcyjnych oboczności
+OBOCZNOSCI = {
+    "studenci": "student",
+    "kolowkium": "kolokwium",
+    "kolokwia": "kolokwium",
+    "kolos": "kolokwium",
+    "skreslenia": "skreslenie",
+    "skreślić": "skreslenie",
+    "prowadzacy": "wykladowca",
+    "obrony": "obrona",
+    "urlopy": "urlop",
+    "wykładowca": "wykladowca",
+    "dziekanki": "dziekanka",
+}
 
 def stemuj(slowo: str) -> str:
     """
-    Zwraca rdzeń słowa po obcięciu końcówki.
+    Zwraca rdzeń słowa po obcięciu końcówki lub wyciąga lemat z tablic twardych oboczności.
     Jeśli żadna końcówka nie pasuje – zwraca słowo bez zmian.
     """
     slowo = slowo.lower().strip()
+    
+    # Inteligentne obejście lematyzacji (P3)
+    if slowo in OBOCZNOSCI:
+        return OBOCZNOSCI[slowo]
 
     for koncowka in KONCOWKI:
+
         if slowo.endswith(koncowka):
             rdzen = slowo[: -len(koncowka)]
             if len(rdzen) >= MIN_RDZEN:

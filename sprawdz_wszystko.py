@@ -1,7 +1,7 @@
-import os
-import sys
-import subprocess
 import glob
+import os
+import subprocess
+import sys
 from html.parser import HTMLParser
 
 # 1. Kolorowanie konsoli dla czytelności z ręki

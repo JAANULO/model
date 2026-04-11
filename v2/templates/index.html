@@ -194,7 +194,7 @@
       margin-top: 2px;
       padding: 4px;
     }
-    
+
     .bot-avatar img {
       width: 100%;
       height: 100%;
@@ -227,6 +227,15 @@
       gap: 8px;
       margin-top: 10px;
     }
+
+    mark.highlight-zdanie {
+      background-color: var(--accent);
+      color: #000;
+      padding: 0 4px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
 
     .source-tag {
       display: inline-flex;
@@ -317,6 +326,17 @@
       display: flex;
       gap: 12px;
       align-items: center;
+      position: relative;
+    }
+
+    .typing-text {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-left: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      animation: pulse 2s ease-in-out infinite;
     }
 
     .typing .bot-avatar {
@@ -828,6 +848,64 @@
     }
 
     /* ── responsywność mobilna ── */
+    /* ── toggles w sekcji bazy wiedzy ── */
+    .sb-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sb-toggle-row:last-child {
+      border-bottom: none;
+    }
+
+    .sb-toggle-sw {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .sb-toggle-sw input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .sb-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .sb-slider:before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .sb-toggle-sw input:checked+.sb-slider {
+      background: rgba(200, 255, 0, 0.15);
+      border-color: var(--accent);
+    }
+
+    .sb-toggle-sw input:checked+.sb-slider:before {
+      transform: translateX(20px);
+      background: var(--accent);
+    }
+
     @media (max-width: 600px) {
       header {
         padding: 12px 16px;
@@ -889,7 +967,7 @@
     <img src="/static/logo.png" class="logo" alt="PWr" onerror="this.outerHTML='<div class=\'logo\'>PWr</div>'" />
     <div class="header-text">
       <h1>Asystent Regulaminowy</h1>
-      <p>Politechnika Wrocławska · TF-IDF v2.0</p>
+      <p>Politechnika Wrocławska · Projekt: JAANULO</p>
     </div>
     <button id="btn-clear" onclick="wyczyscChat()" data-tooltip="Nowy Czat"
       style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace;transition:all 0.15s;">
@@ -914,15 +992,15 @@
       <button class="modal-btn" onclick="zapiszPdf()">📄 Zapisz rozmowę do PDF</button>
       <button class="modal-btn" onclick="pokazBazeWiedzy()">📁 Zobacz wczytane bazy wiedzy</button>
 
-      <div class="modal-info" id="infoBazaWidzy" style="display:none; color:var(--accent);"></div>
+      <div id="infoBazaWidzy"
+        style="display:none; margin-top:12px; padding:14px; background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px;">
+      </div>
 
       <div class="modal-info" style="border-top: 1px solid var(--border); padding-top: 16px;">
-
-        <strong>Asystent RAG </strong><br />
+        <strong>Informacje o projekcie</strong><br />
         Autor: <a href="https://github.com/JAANULO" target="_blank"
           style="color:var(--accent); text-decoration:none; font-weight:bold;">Janusz Andrzejewski</a><br />
         Wersja: 2.0 (Vector Space Model BM25)
-
       </div>
     </div>
   </div>
@@ -983,23 +1061,28 @@
       const isLight = document.body.classList.contains('light-theme');
       localStorage.setItem(THEME_KEY, isLight ? 'light' : 'dark');
     }
+    // Zarządzanie bazami zrodlowymi
+    let aktywneZrodla = new Set(['Wszystkie dokumenty']);
+    let wybraneZrodloIndywidualne = null;
+
     ladujMotyw();
 
     // pamięć kontekstu – ostatni paragraf i pytanie
     let ostatniKontekstTytul = null;
     let ostatniKontekstPytanie = null;
 
-    // Przywróć historię po odświeżeniu strony
+    // Przywróć historię po odświeżeniu strony (Przeniesiono do pamięci trwalszej)
     const HISTORIA_KEY = 'pwr_chat_historia';
     function zapiszHistorie(pytanie, odpowiedz) {
-      const hist = JSON.parse(sessionStorage.getItem(HISTORIA_KEY) || '[]');
+      const hist = JSON.parse(localStorage.getItem(HISTORIA_KEY) || '[]');
       hist.push({ pytanie, odpowiedz, czas: new Date().toLocaleTimeString() });
       if (hist.length > 20) hist.shift(); // max 20 wpisów
-      sessionStorage.setItem(HISTORIA_KEY, JSON.stringify(hist));
+      localStorage.setItem(HISTORIA_KEY, JSON.stringify(hist));
     }
     function wczytajHistorie() {
-      const hist = JSON.parse(sessionStorage.getItem(HISTORIA_KEY) || '[]');
+      const hist = JSON.parse(localStorage.getItem(HISTORIA_KEY) || '[]');
       if (hist.length === 0) return;
+
       ukryjWitajke();
       hist.forEach(({ pytanie, odpowiedz, czas }) => {
         dodajWiadomoscUzytkownika(pytanie, czas);
@@ -1071,6 +1154,7 @@
         <div class="typing-dots">
           <span></span><span></span><span></span>
         </div>
+        <div class="typing-text">Szukam informacji...</div>
       </div>`;
       chatEl.appendChild(el);
       scrollDol();
@@ -1158,12 +1242,36 @@
       const skrzyneczkacopyHtml = escHtml(czystyKopiowanyTekst);
 
       // Zgodnie z decyzją projektową rezygnujemy z powiązań przy odpowiadaniu przez bota
+      let sformatowanaPelnaTresc = escHtml(dane.pelna_tresc || '');
+      if (dane.najlepsze_zdanie && sformatowanaPelnaTresc) {
+        const czysteNajlepszeZdanie = escHtml(dane.najlepsze_zdanie);
+        if (sformatowanaPelnaTresc.includes(czysteNajlepszeZdanie)) {
+          sformatowanaPelnaTresc = sformatowanaPelnaTresc.replace(
+            czysteNajlepszeZdanie,
+            '<mark class="highlight-zdanie">' + czysteNajlepszeZdanie + '</mark>'
+          );
+        }
+      }
+
+      // Optymalizacja UX: złamania html & Markowanie (Highlight) Wyrazów kluczowych
+      let sformatowanaZlamanaTresc = sformatowanaPelnaTresc.replace(/\n+/g, '<br><br>');
+      if (dane.slowa_kluczowe && dane.slowa_kluczowe.length > 0) {
+        dane.slowa_kluczowe.forEach(slowo => {
+          if (slowo.length >= 3) {
+            const regex = new RegExp(`(${slowo})`, 'gi');
+            sformatowanaZlamanaTresc = sformatowanaZlamanaTresc.replace(regex, '<mark class="highlight-zdanie" style="background-color: var(--accent); color: #000;">$1</mark>');
+          }
+        });
+      }
+
       const natychmiastowyParagraf = dane.pelna_tresc
         ? '<div style="margin-top: 8px;"><button class="btn-rozwin" onclick="rozwinTresc(this)">▼ pokaż pełny paragraf</button>' +
-        '<div class="pelna-tresc" hidden>' + escHtml(dane.pelna_tresc) + '</div></div>'
+        '<div class="pelna-tresc" style="display: none; line-height: 1.5; font-size: 0.9em; margin-top: 8px;">' +
+        sformatowanaZlamanaTresc + '</div></div>'
         : '';
 
       wrap.innerHTML = '<div class="msg-bot">' +
+
         '<div class="bot-avatar"><img src="/static/logo.png" alt="Logo"></div>' +
         '<div class="bot-content">' +
         '<div class="bubble type-target"></div>' + // Pusta bańka na efekt literowania
@@ -1250,18 +1358,47 @@
       pokazTyping();
 
       try {
+        let aktZrodlo = wybraneZrodloIndywidualne || "Wszystkie dokumenty";
+        if (aktZrodlo === "odlacz") {
+          ukryjTyping();
+          dodajOdpowiedzBota({ odpowiedz: "Baza wiedzy jest odłączona. Podłącz ją w opcjach.", tytul: null, podobienstwo: 0 });
+          btnEl.disabled = false;
+          return;
+        }
         const res = await fetch('/zapytaj', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             pytanie: tekst,
+            zrodlo: aktZrodlo,
             kontekst_tytul: ostatniKontekstTytul,
             kontekst_pytanie: ostatniKontekstPytanie,
           }),
         });
+
+
         const dane = await res.json();
         ukryjTyping();
+
+        if (dane.disambiguation) {
+          let opcjeHtml = '';
+          dane.opcje.forEach(opcja => {
+            opcjeHtml += `<button class="btn-chip" onclick="zadaj(this)">${escHtml(opcja)}</button>`;
+          });
+          const disambigHtml = `<div style="margin-bottom: 8px;">${escHtml(dane.komunikat)}</div><div class="chips-container" style="flex-wrap: wrap;">${opcjeHtml}</div>`;
+
+          const wrap = document.createElement('div');
+          wrap.className = 'message-wrap';
+          wrap.dataset.ts = new Date().toLocaleString('pl-PL');
+          wrap.innerHTML = `<div class="msg-bot"><div class="bot-avatar"><img src="/static/logo.png" alt="Logo"></div><div class="bot-content"><div class="bubble">${disambigHtml}</div></div></div>`;
+          chatEl.appendChild(wrap);
+          scrollDol();
+          zapiszHistorie(tekst, dane.komunikat);
+          return;
+        }
+
         dodajOdpowiedzBota(dane);
+
         // zapamiętaj kontekst dla następnego pytania
         if (dane.kontekst_tytul) {
           ostatniKontekstTytul = dane.kontekst_tytul;
@@ -1337,12 +1474,85 @@
 
     async function pokazBazeWiedzy() {
       const infoDiv = document.getElementById('infoBazaWidzy');
+      if (infoDiv.style.display === 'block') {
+        infoDiv.style.display = 'none';
+        return;
+      }
       infoDiv.style.display = 'block';
+      infoDiv.innerHTML = '<div style="color:var(--accent);font-size:12px;padding:10px;">🔍 Przeszukiwanie dysku...</div>';
 
-      const btnAnalizaSrodowiska = '<button class="btn-rozwin" style="margin-top: 10px; border-color: var(--accent); color: var(--accent); display:block; width: 100%;" onclick="window.open(\'/graf_widok\', \'_blank\')">🌐 Otwórz Globalną Siatkę Słów PDF</button>';
-      infoDiv.innerHTML = `<b>Wczytane pliki źródłowe ⚙️:</b><br/>
-         📄 Regulamin_studiow_PWr.pdf<br/>
-         <i style="color:var(--muted); font-size:10px;">Dane przetworzone wektorowo.</i><br>` + btnAnalizaSrodowiska;
+      try {
+        const res = await fetch('/zrodla');
+        const pliki = await res.json();
+
+        let html = '<div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:700;">📂 Zarządzanie Wiedzą</div>';
+
+        // Opcja: Wszystkie dokumenty
+        const jestWszystko = wybraneZrodloIndywidualne === null || wybraneZrodloIndywidualne === "Wszystkie dokumenty";
+        html += `
+          <div class="sb-toggle-row">
+            <div>
+              <div style="font-size:13px;color:var(--accent);font-weight:600;">📚 Wszystkie bazy (tryb zbiorczy)</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px;">Przeszukuje wszystkie dostępne pliki naraz</div>
+            </div>
+            <label class="sb-toggle-sw">
+              <input type="checkbox" ${jestWszystko ? 'checked' : ''} onchange="przelaczTrybZbiorczy(this)">
+              <span class="sb-slider"></span>
+            </label>
+          </div>`;
+
+        // Poszczególne pliki
+        pliki.forEach(plik => {
+          if (plik === 'dane.json') return; // Ukrywamy plik techniczny 'dane'
+
+          const aktywny = (wybraneZrodloIndywidualne === plik);
+          let nazwaWyswietlana = plik.replace('.json', '.pdf');
+          if (plik === 'baza_wiedzy.json') nazwaWyswietlana = 'regulamin.pdf';
+
+          html += `
+          <div class="sb-toggle-row" style="opacity: ${jestWszystko ? '0.5' : '1'}">
+            <div>
+              <div style="font-size:13px;color:var(--text);">📄 ${nazwaWyswietlana}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:2px;">Wczytany dokument regulaminowy</div>
+            </div>
+            <label class="sb-toggle-sw">
+              <input type="checkbox" ${aktywny && !jestWszystko ? 'checked' : ''} ${jestWszystko ? 'disabled' : ''} data-plik="${plik}" onchange="przelaczBaze(this)">
+              <span class="sb-slider"></span>
+            </label>
+          </div>`;
+        });
+
+
+        html += `
+        <div style="margin-top:10px;padding-top:10px;">
+          <button class="btn-rozwin" style="border-color:var(--accent2);color:var(--accent2);display:block;width:100%;font-weight:700;" onclick="window.open('/graf_widok','_blank')">🌐 Otwórz mapę powiązań</button>
+        </div>`;
+
+        infoDiv.innerHTML = html;
+      } catch (e) {
+        infoDiv.innerHTML = '<div style="color:var(--danger);font-size:12px;">Nie udało się wczytać listy baz.</div>';
+      }
+    }
+
+    function przelaczTrybZbiorczy(cb) {
+      if (cb.checked) {
+        wybraneZrodloIndywiduallo = null;
+        wybraneZrodloIndywidualne = "Wszystkie dokumenty";
+      } else {
+        wybraneZrodloIndywidualne = "baza_wiedzy.json"; // fallback
+      }
+      pokazBazeWiedzy(); // odśwież widok
+    }
+
+    function przelaczBaze(cb) {
+      if (cb.checked) {
+        wybraneZrodloIndywidualne = cb.dataset.plik;
+      } else {
+        wybraneZrodloIndywidualne = "odlacz";
+      }
+      // odznacz inne checkboxy w widoku (zachowanie radia)
+      const inputs = document.querySelectorAll('#infoBazaWidzy input[data-plik]');
+      inputs.forEach(i => { if (i !== cb) i.checked = false; });
     }
 
     function otworzOpcje() {
@@ -1417,6 +1627,23 @@
       toggleSidebar();       // Zamknij pasek
       inputEl.value = pytanie; // Wstaw treść
       wyslij();              // Przekaż od razu do bota
+    }
+
+    function walidatorZrodla() {
+      const select = document.getElementById('wyborZrodla').value;
+      const input = document.getElementById('input');
+      const btn = document.getElementById('btn');
+      if (select === "odlacz") {
+        input.disabled = true;
+        btn.disabled = true;
+        input.placeholder = "Brak podpiętej bazy wiedzy! Wybierz źródło...";
+        input.style.opacity = 0.5;
+      } else {
+        input.disabled = false;
+        btn.disabled = false;
+        input.placeholder = "Zadaj pytanie o regulamin studiów…";
+        input.style.opacity = 1;
+      }
     }
   </script>
 

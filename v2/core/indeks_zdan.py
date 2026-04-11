@@ -7,16 +7,29 @@ Jak działa:
   Po:      pytanie → konkretne zdanie (1-2 zdania) → gotowa odpowiedź
 """
 
-import re
-import math
-import json
-import os
 import glob
+import json
+import math
+import os
+import pickle
+import re
 
 try:
-    from .wyszukiwarka import tokenizuj, oblicz_idf, zbuduj_wektory, podobienstwo_cosinusowe, oblicz_tf
+    from .wyszukiwarka import (
+        oblicz_idf,
+        oblicz_tf,
+        podobienstwo_cosinusowe,
+        tokenizuj,
+        zbuduj_wektory,
+    )
 except ImportError:
-    from wyszukiwarka import tokenizuj, oblicz_idf, zbuduj_wektory, podobienstwo_cosinusowe, oblicz_tf
+    from wyszukiwarka import (
+        oblicz_idf,
+        oblicz_tf,
+        podobienstwo_cosinusowe,
+        tokenizuj,
+        zbuduj_wektory,
+    )
 
 
 # ── podział paragrafu na zdania ───────────────────────────────────────────────
@@ -55,7 +68,6 @@ class IndeksZdan:
     """
 
     def __init__(self, plik_bazy: str):
-        import pickle
 
         if os.path.isdir(plik_bazy):
             data_dir = plik_bazy
