@@ -14,23 +14,41 @@ from typing import TYPE_CHECKING
 
 from flask import Flask, jsonify, render_template, request
 
-from core.bd import (
-    inicjalizuj,
-    pobierz_ostatnie_pytania,
-    pobierz_pytanie,
-    pobierz_statystyki,
-    zapisz_feedback,
-    zapisz_pytanie,
-)
-from core.formatowanie import formatuj_odpowiedz
-from core.slowniki import ROZSZERZENIA, SYNONIMY
-from core.wyszukiwarka import Wyszukiwarka
+try:
+    from .core.settings import ADMIN_TOKEN, FLASK_DEBUG, FLASK_HOST, FLASK_PORT, LOG_LEVEL
+    from .core.bd import (
+        inicjalizuj,
+        pobierz_ostatnie_pytania,
+        pobierz_pytanie,
+        pobierz_statystyki,
+        zapisz_feedback,
+        zapisz_pytanie,
+    )
+    from .core.formatowanie import formatuj_odpowiedz
+    from .core.slowniki import ROZSZERZENIA, SYNONIMY
+    from .core.wyszukiwarka import Wyszukiwarka
+except ImportError:
+    from core.settings import ADMIN_TOKEN, FLASK_DEBUG, FLASK_HOST, FLASK_PORT, LOG_LEVEL
+    from core.bd import (
+        inicjalizuj,
+        pobierz_ostatnie_pytania,
+        pobierz_pytanie,
+        pobierz_statystyki,
+        zapisz_feedback,
+        zapisz_pytanie,
+    )
+    from core.formatowanie import formatuj_odpowiedz
+    from core.slowniki import ROZSZERZENIA, SYNONIMY
+    from core.wyszukiwarka import Wyszukiwarka
 
 
 app = Flask(__name__)
 
 if TYPE_CHECKING:
-    from core.indeks_zdan import IndeksZdan
+    try:
+        from .core.indeks_zdan import IndeksZdan
+    except ImportError:
+        from core.indeks_zdan import IndeksZdan
 
 def _znajdz_rozszerzenie(pytanie_lower: str) -> str:
     """Zwraca rozszerzenie dla pierwszej pasującej frazy lub pusty string."""
@@ -78,8 +96,7 @@ CACHE_MAX_SIZE = 500
 CACHE_ODPOWIEDZI = OrderedDict()
 
 logger = logging.getLogger("asystent")
-poziom_logow = os.environ.get("LOG_LEVEL", "INFO").upper()
-logger.setLevel(getattr(logging, poziom_logow, logging.INFO))
+logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
 logger.propagate = False  # nie przepuszczaj do root loggera
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
@@ -104,7 +121,10 @@ def zaladuj_wyszukiwarke():
 
     wyszukiwarka = Wyszukiwarka(DATA_DIR)
     global indeks_zdan
-    from core.indeks_zdan import IndeksZdan
+    try:
+        from .core.indeks_zdan import IndeksZdan
+    except ImportError:
+        from core.indeks_zdan import IndeksZdan
     indeks_zdan = IndeksZdan(DATA_DIR)
     logger.info("Wyszukiwarka zaladowana")
 
@@ -281,7 +301,10 @@ def zapytaj():
             _cache_set(pytanie, payload)
         return jsonify(payload)
 
-    from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
+    try:
+        from .core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
+    except ImportError:
+        from core.intencje import wykryj_intencje, generuj_skrot, wyciagnij_liczbe, wyciagnij_termin
 
     intencja = wykryj_intencje(pytanie)
     if indeks_zdan is not None:
@@ -346,7 +369,10 @@ def zapytaj():
     )
 
     if isinstance(odp, dict):
-        from core.wyszukiwarka import tokenizuj
+        try:
+            from .core.wyszukiwarka import tokenizuj
+        except ImportError:
+            from core.wyszukiwarka import tokenizuj
         payload = {
             "wstep":         odp["wstep"],
             "punkty":        odp["punkty"],
@@ -381,7 +407,6 @@ def feedback():
     logger.info(f"FEEDBACK: pytanie_id={pid}, ocena={ocena}")
 
     # Dodatkowy log do pliku dla negatywnych ocen z niską pewnością
-    # Dodatkowy log do pliku dla negatywnych ocen z niską pewnością
     if ocena == -1:
         rekord = pobierz_pytanie(pid)
         if rekord and rekord["podobienstwo"] is not None and rekord["podobienstwo"] < 0.2:
@@ -395,9 +420,6 @@ def feedback():
                     f"[{czas}] Pytanie: '{rekord['pytanie']}' | Odpowiedź: '{rekord['odpowiedz'] or ''}' | Podobieństwo: {rekord['podobienstwo']:.3f} | Tytuł: {rekord['tytul']}\n")
 
     return jsonify({"ok": True})
-
-
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "dev-token-zmien-mnie")
 
 
 @app.route("/graf_widok", methods=["GET"])
@@ -451,7 +473,10 @@ def admin_eksport_csv():
     
     import csv, io
     from flask import Response
-    from core.bd import polacz, TRYB
+    try:
+        from .core.bd import polacz, TRYB
+    except ImportError:
+        from core.bd import polacz, TRYB
     
     buf = io.StringIO()
     writer = csv.writer(buf)
@@ -519,6 +544,5 @@ if __name__ != "__main__":
 if __name__ == "__main__":
     print("Ładowanie bazy wiedzy...")
     zaladuj_wyszukiwarke()
-    print("Serwer startuje -> http://localhost:5000\n")
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=False, use_reloader=False, host="0.0.0.0", port=port)
+    print(f"Serwer startuje -> http://localhost:{FLASK_PORT}\n")
+    app.run(debug=FLASK_DEBUG, use_reloader=False, host=FLASK_HOST, port=FLASK_PORT)
