@@ -2,6 +2,8 @@
 
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
 
 def _as_bool(value: str | None, default: bool = False) -> bool:
     if value is None:

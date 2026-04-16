@@ -1,0 +1,27 @@
+name: Analiza CI/CD Asystenta PWr
+on: [push]
+
+jobs:
+  test_and_lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Konfiguracja srodowiska (Python 3.13)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          
+      - name: Ladowanie pakietow zewnetrznych PWr
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff python-dotenv
+          if [ -f v2/requirements.txt ]; then pip install -r v2/requirements.txt; fi
+          
+      - name: LINTER (Inspekcja formatowania i usterk PEP8)
+        run: ruff check .
+          
+      - name: AUTOTESTY (Sprawdzenie regulem BM25 - test.py)
+        run: |
+          cd v2
+          python tests/test.py

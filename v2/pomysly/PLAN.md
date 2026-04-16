@@ -26,7 +26,7 @@ Ten dokument zawiera wizję rozwoju projektu, uporządkowaną według poziomu tr
 
 ## 🟡 Priorytet P1 (Średnie - Wydajność i Infrastruktura)
 
-### 1. 📅 DO ZROBIENIA: Bezpieczeństwo i Konfiguracja (.env)
+### 1. ✅ ZREALIZOWANE: Bezpieczeństwo i Konfiguracja (.env)
 *   **Cel**: Usunięcie sekretów z kodu źródłowego.
 *   **Szczegóły**: Migracja `ADMIN_TOKEN` oraz ścieżek baz danych do pliku `.env` (python-dotenv).
 
@@ -48,7 +48,7 @@ Ten dokument zawiera wizję rozwoju projektu, uporządkowaną według poziomu tr
     - **Frontend (`lab.html`)**: Dashboard z suwakami i Chart.js. Dwie linie na wykresie: szara (oryginalna) i neonowa (symulacja).
     - **Eksport**: Przycisk pobierania aktualnej konfiguracji suwaków do pliku JSON/TXT.
 
-"patrz plik symulacja.md"
+Odniesienie poboczne: [symulacja.md](symulacja.md)
 
 ### 2. 📅 DO ZROBIENIA: Poprawa słownika (§ECTS, §Praktyki)
 *   **Cel**: Rozbudowa synonimów dla nowych, trudnych paragrafów regulaminu.
