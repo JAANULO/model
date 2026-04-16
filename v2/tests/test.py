@@ -277,6 +277,10 @@ def main():
         print(f"Blad: Nie znaleziono pliku bazy w {PLIK_BAZY}")
         return
 
+    # Wymuszenie postawienia lokalnej Bazy Danych pod izolowane testy na GHA / Runners
+    from core.bd import inicjalizuj
+    inicjalizuj()
+
     w = Wyszukiwarka(PLIK_BAZY)
     ok = 0
     bledy = []
