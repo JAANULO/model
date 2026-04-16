@@ -17,7 +17,7 @@ import os
 import hashlib
 import random
 
-import sys, os
+import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from shared.transformer import MiniGPT, Adam, softmax, URZADZENIE
 from shared.tokenizer   import Tokenizer
@@ -321,7 +321,7 @@ if __name__ == "__main__":
                         proc = epoka / EPOKI * 100
                         print(f"  Epoka {epoka}/{EPOKI} ({proc:.0f}%)  strata: {strata:.4f}")
 
-            print(f"\n  ✅ Trening zakończony!")
+            print("\n  ✅ Trening zakończony!")
             model.ustaw_trening(False)
             zapisz_cache(model, tokenizer, aktualny_hash)
             print(f"  💾 Model zapisany do '{PLIK_CACHE}'\n")

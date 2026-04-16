@@ -65,15 +65,15 @@ def zapisz_feedback_db(pytanie_id, ocena):
 def pokaz_statystyki():
     stats = pobierz_statystyki()
 
-    print(f"\n  📊 Statystyki sesji:")
+    print("\n  📊 Statystyki sesji:")
     print(f"     Zadanych pytań:       {stats['pytania']}")
     print(f"     Średnie dopasowanie:  {stats['srednie_podobienstwo']}%")
     if stats.get('top_paragrafy'):
-        print(f"     Najczęstsze tematy:")
+        print("     Najczęstsze tematy:")
         for w in stats['top_paragrafy']:
             print(f"       • {w['tytul'][:45]} ({w['n']}×)")
     if stats.get('zle_odpowiedzi'):
-        print(f"     Ostatnie złe odpowiedzi (👎):")
+        print("     Ostatnie złe odpowiedzi (👎):")
         for z in stats['zle_odpowiedzi']:
             print(f"       • '{z['pytanie'][:40]}' → {z['tytul']}")
     print()
@@ -467,7 +467,7 @@ if __name__ == "__main__":
                     if epoka % 100 == 0 or epoka == EPOKI:
                         print(f"  Epoka {epoka}/{EPOKI} ({epoka / EPOKI * 100:.0f}%)  strata: {strata:.4f}")
 
-            print(f"\n  ✅ Trening zakończony!")
+            print("\n  ✅ Trening zakończony!")
             model.ustaw_trening(False)
             zapisz_cache(model, tokenizer, aktualny_hash)
             print(f"  💾 Model zapisany do '{PLIK_CACHE}'\n")
@@ -579,7 +579,7 @@ if __name__ == "__main__":
             # ── info o bazie ───────────────────────────────────
             if wejscie == "/info":
                 if wyszukiwarka:
-                    print(f"\n  📚 Baza wiedzy:")
+                    print("\n  📚 Baza wiedzy:")
                     print(f"     Fragmentów: {len(wyszukiwarka.fragmenty)}")
                     print(f"     Słów w słowniku BM25: {len(wyszukiwarka.idf)}")
                 else:

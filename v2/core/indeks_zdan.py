@@ -9,7 +9,6 @@ Jak działa:
 
 import glob
 import json
-import math
 import os
 import pickle
 import re

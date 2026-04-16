@@ -16,11 +16,9 @@ from collections import Counter
 try:
     from core.bd import pobierz_wspolczynniki_zbiorczo
     from core.slowniki import ROZSZERZENIA, SYNONIMY
-    from core.stemmer import stemuj
 except ImportError:
     from .bd import pobierz_wspolczynniki_zbiorczo
     from .slowniki import ROZSZERZENIA, SYNONIMY
-    from .stemmer import stemuj
 
 PLIK_BAZY = os.path.join(os.path.dirname(__file__), '..', 'data', 'baza_wiedzy.json')
 MAPA_WAG_TTL = 60

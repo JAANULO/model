@@ -8,7 +8,6 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
 
 # Ustawienie ścieżki dla modułów lokalnych
 v2_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -41,13 +40,13 @@ def main():
     # sprawdź czy baza istnieje i nie jest pusta
     if not os.path.exists(PLIK_BAZY):
         print(f"\n  [X] Blad: nie znaleziono '{PLIK_BAZY}'")
-        print(f"     Uruchom najpierw: python parser.py\n")
+        print("     Uruchom najpierw: python parser.py\n")
         logging.error(f"Brak pliku bazy: {os.path.abspath(PLIK_BAZY)}")
         return
 
     if os.path.getsize(PLIK_BAZY) < 10:
         print(f"\n  ❌ Błąd: plik '{PLIK_BAZY}' jest pusty.")
-        print(f"     Uruchom ponownie: python parser.py\n")
+        print("     Uruchom ponownie: python parser.py\n")
         logging.error(f"Plik bazy jest pusty: {os.path.abspath(PLIK_BAZY)}")
         return
 
@@ -56,7 +55,7 @@ def main():
             json.load(f)
     except json.JSONDecodeError:
         print(f"\n  ❌ Błąd: plik '{PLIK_BAZY}' jest uszkodzony.")
-        print(f"     Uruchom ponownie: python parser.py\n")
+        print("     Uruchom ponownie: python parser.py\n")
         logging.error(f"Plik bazy uszkodzony: {os.path.abspath(PLIK_BAZY)}")
         return
 
@@ -110,7 +109,7 @@ def main():
         elif pytanie.lower().startswith("/szukaj "):
             zapytanie = pytanie[8:].strip()
             wyniki    = w.szukaj(zapytanie, n_wynikow=3)
-            print(f"\n  Znalezione paragrafy:")
+            print("\n  Znalezione paragrafy:")
             for i, wyn in enumerate(wyniki, 1):
                 print(f"  [{i}] {wyn['tytul']} ({int(wyn['podobienstwo']*100)}%)")
 

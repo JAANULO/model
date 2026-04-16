@@ -8,10 +8,8 @@ import re
 import sys
 
 try:
-    from core.slowniki import ROZSZERZENIA
     from core.wyszukiwarka import tokenizuj as _tokenizuj
 except ImportError:
-    from .slowniki import ROZSZERZENIA
     from .wyszukiwarka import tokenizuj as _tokenizuj
 
 

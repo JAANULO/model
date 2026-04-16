@@ -1,8 +1,6 @@
 # debug.py
 import inspect
 import re
-import os
-import sys
 
 from core.indeks_zdan import IndeksZdan
 from core.intencje import (

@@ -471,7 +471,8 @@ def admin_eksport_csv():
     if token != ADMIN_TOKEN:
         return "Brak dostępu!", 403
     
-    import csv, io
+    import csv
+    import io
     from flask import Response
     try:
         from .core.bd import polacz, TRYB

@@ -1,5 +1,4 @@
 import glob
-import os
 import subprocess
 import sys
 from html.parser import HTMLParser
@@ -72,7 +71,7 @@ def sprawdz_front_end():
 def upewnij_sie_o_linter() -> bool:
     """Instaluje Flake8 z powłoki lokalnej jeśli jest wymagany w repozytorium"""
     try:
-        import flake8
+        import flake8  # noqa: F401
         return True
     except ImportError:
         print(f" {YELLOW}(Trwa wstrzykiwanie wbudowanego testera Flake8...){RESET}")
@@ -129,7 +128,7 @@ def testuj_wszystko():
     
     print("\n" + "="*50)
     print("   [GLOBALNY SKANER BŁĘDÓW - ASYSTENT PWR]")
-    print(f"     Odpalamy filtry bezpieczeństwa całego obszaru...")
+    print("     Odpalamy filtry bezpieczeństwa całego obszaru...")
     print("="*50)
     
     # KROK 1: Frontend

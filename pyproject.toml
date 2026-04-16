@@ -1,0 +1,10 @@
+[tool.ruff.lint]
+ignore = [
+    "E402", # Akceptacja importow pod wstrzykiwaniach sys.path w glownych skryptach
+    "E741", # Ignorowanie zgaslosc litery 'l' uzytej do iteratora okien
+    "E701", # Tolerancja warunkowego return/continue po dwukropku na tej samej linii
+    "F601", # Tolerancja zlotego kodu PWr na zduplikowane klucze slownikowe BM25
+    "E401", # Zezwolenie na importy 'os, sys' na linii glownej
+    "F811", # Zezwolenie na redefinicje 
+    "F841"  # Nieuzywane zmienne warunkowe
+]
