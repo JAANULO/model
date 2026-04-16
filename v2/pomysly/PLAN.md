@@ -40,7 +40,7 @@ Ten dokument zawiera wizję rozwoju projektu, uporządkowaną według poziomu tr
 
 ## 🟠 Priorytet P2 (Algorytmy i UX: Laboratorium)
 
-### 1. ⏳ W TRAKCIE: Laboratorium Regulaminowe (Tryb Symulacji)
+### 1. ✅ ZREALIZOWANE: Laboratorium Regulaminowe (Tryb Symulacji)
 *   **Cel**: Interaktywne badanie wpływu parametrów na wykresach liniowych (Baseline vs Delta).
 *   **Specyfikacja techniczna**:
     - **Backend**: Refaktoryzacja `Wyszukiwarka.szukaj`, aby przyjmowała `virtual_params` (ad-hoc).

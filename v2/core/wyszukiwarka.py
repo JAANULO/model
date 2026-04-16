@@ -152,14 +152,14 @@ def oblicz_idf(wszystkie_tokeny):
     """zachowane dla kompatybilności — używa BM25"""
     return oblicz_idf_bm25(wszystkie_tokeny)
 
-def zbuduj_wektory_bm25(wszystkie_tokeny, idf):
+def zbuduj_wektory_bm25(wszystkie_tokeny, idf, custom_k1=None, custom_b=None):
     """
-    Buduje wektory BM25 zamiast TF-IDF.
+    Buduje wektory BM25. Obsługa wirtualnego override dla Laboratorium (Tryb Symulacji).
     Kluczowa różnica: tf jest normalizowane przez długość dokumentu.
     Wzór: idf * (tf * (k1+1)) / (tf + k1 * (1 - b + b * dl/avgdl))
-      dl    = długość bieżącego dokumentu
-      avgdl = średnia długość dokumentu w całej bazie
     """
+    k1 = custom_k1 if custom_k1 is not None else BM25_K1
+    b = custom_b if custom_b is not None else BM25_B
     avgdl = sum(len(t) for t in wszystkie_tokeny) / max(len(wszystkie_tokeny), 1)
 
     wektory = []
@@ -172,17 +172,17 @@ def zbuduj_wektory_bm25(wszystkie_tokeny, idf):
         wektor = {}
         for slowo, tf in licznik.items():
             idf_val = idf.get(slowo, 0)
-            licznik_bm25 = tf * (BM25_K1 + 1)
-            mianownik_bm25 = tf + BM25_K1 * (1 - BM25_B + BM25_B * dl / avgdl)
+            licznik_bm25 = tf * (k1 + 1)
+            mianownik_bm25 = tf + k1 * (1 - b + b * dl / avgdl)
             wektor[slowo] = idf_val * (licznik_bm25 / mianownik_bm25)
 
         wektory.append(wektor)
 
     return wektory
 
-def zbuduj_wektory(wszystkie_tokeny, idf):
-    """zachowane dla kompatybilności — używa BM25"""
-    return zbuduj_wektory_bm25(wszystkie_tokeny, idf)
+def zbuduj_wektory(wszystkie_tokeny, idf, custom_k1=None, custom_b=None):
+    """zachowane dla kompatybilności — używa BM25 z opcją custom_params params"""
+    return zbuduj_wektory_bm25(wszystkie_tokeny, idf, custom_k1, custom_b)
 
 
 # ── Krok 3: podobienstwo cosinusowe ──────────────────────────────────────────
@@ -384,12 +384,12 @@ class Wyszukiwarka:
         setattr(self, cache_key, wynik)
         return wynik
 
-    def szukaj(self, pytanie, n_wynikow=1, zrodlo=None):
+    def szukaj(self, pytanie, n_wynikow=1, zrodlo=None, virtual_params=None):
         """
         Dla podanego pytania zwraca n najbardziej pasujacych fragmentow.
-        Parametr zrodlo filtruje wyniki do wybranej bazy (dropdown z GUI).
+        Parametr virtual_params to słownik suwaków z Laboratorium w locie omijający Cache.
         """
-        # Szybka ścieżka: zapytanie o konkretny paragraf bez BM25
+        # Szybka ścieżka: zapytanie o konkretny paragraf bez BM25 (wyłączenie w locie labu z faktu na 1.0)
         numer_paragrafu = self.wykryj_numer_paragrafu(pytanie)
         if numer_paragrafu:
             trafienie = self.pobierz_paragraf_po_numerze(numer_paragrafu)
@@ -414,18 +414,28 @@ class Wyszukiwarka:
                 rozszerzenie.extend(tokenizuj(rozszerzenie_frazy))
 
         tokeny_pytania = tokeny_pytania + rozszerzenie
+        tf_pytania = oblicz_tf(tokeny_pytania)
 
-        tf_pytania    = oblicz_tf(tokeny_pytania)
-        wektor_pytania = {
-            slowo: tf_val * self.idf.get(slowo, 0)
-            for slowo, tf_val in tf_pytania.items()
-        }
+        # --- Faza dla Laboratorium ---
+        synonimy_waga = 1.0
+        wektory_bazy = self.wektory
+        if virtual_params:
+            synonimy_waga = float(virtual_params.get("synonym_weight", 1.0))
+            k1_lab = float(virtual_params.get("bm25_k1", BM25_K1))
+            b_lab = float(virtual_params.get("bm25_b", BM25_B))
+            if k1_lab != BM25_K1 or b_lab != BM25_B:
+                wektory_bazy = zbuduj_wektory_bm25(self.wszystkie_tokeny, self.idf, custom_k1=k1_lab, custom_b=b_lab)
+        
+        wektor_pytania = {}
+        for slowo, tf_val in tf_pytania.items():
+            finalny_tf = tf_val * synonimy_waga if slowo in rozszerzenie else tf_val
+            wektor_pytania[slowo] = finalny_tf * self.idf.get(slowo, 0)
 
         # Słownik zbiorczy nazywamy 'mapa_wag'
         mapa_wag = _pobierz_mapa_wag_cached()
         wyniki = []
 
-        for i, wf in enumerate(self.wektory):
+        for i, wf in enumerate(wektory_bazy):
             podstawa = podobienstwo_cosinusowe(wektor_pytania, wf)
             tytul = self.fragmenty[i]['tytul']
 
