@@ -78,7 +78,7 @@ Zautomatyzuj sprawdzanie błędów, nieużywanych importów i formatowanie kodu 
 
 ---
 
-## 📅 DO ZROBIENIA: 4. Konteneryzacja (Docker)
+## ✅ ZREALIZOWANE: 4. Konteneryzacja (Docker)
 Docker pozwala na uruchomienie aplikacji w dokładnie takim samym, izolowanym środowisku na każdym komputerze i serwerze, eliminując problem "u mnie działa".
 
 ### Przykład pliku `Dockerfile` (umieść w głównym folderze):
@@ -96,16 +96,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Kopiujemy resztę kodu
 COPY . .
 
-# Wystawiamy port aplikacji
-EXPOSE 5000
-
-# Komenda uruchamiająca serwer
-CMD ["python", "app.py"]
+# Wystawiamy port i wrzucamy elastyczne starty gunicorn'em z hostingu:
+CMD gunicorn -b 0.0.0.0:${PORT:-5000} app:app
 ```
 
 ---
 
-## 📅 DO ZROBIENIA: 5. Dokumentacja (README.md)
+## ✅ ZREALIZOWANE: 5. Dokumentacja (README.md)
 Dobre README to klucz do sukcesu projektu na GitHubie – to pierwsza rzecz, którą widzi rekruter lub inny programista.
 
 ### Co powinno zawierać profesjonalne README?

@@ -11,6 +11,14 @@ An academic project built entirely from scratch — no NLP libraries (no sklearn
 
 ---
 
+All algorithms implemented **from scratch in pure Python**.
+
+---
+
+<p align="center">
+  <img src="preview.png" alt="App Interface GUI" width="800">
+</p>
+
 ## How It Works
 
 ```
@@ -82,7 +90,7 @@ Instead of generating answers from memory (risking hallucinations), the system f
 - **SQLite database** for statistics and feedback (`v2/data/asystent.db`)
 - Text logs to `v2/logs/log.txt` (GUI + CLI runtime events)
 - Feedback buttons 👍/👎 in GUI — saved to database; low-confidence negative feedback is appended to `v2/logs/do_poprawy.txt`
-- Automated tests (`tests/test.py`) — regression set of 77 questions, **77/77 accuracy**
+- Automated tests (`tests/test.py`) — regression set of 150 questions, **150/150 accuracy!**
 - `/historia` endpoint — last 10 questions from SQLite
 - `/admin` dashboard (Chart.js) secured by `ADMIN_TOKEN`
 ---
@@ -91,8 +99,8 @@ Instead of generating answers from memory (risking hallucinations), the system f
 
 | Metric | Value |
 |---|---|
-| Test set size | 77 questions |
-| Accuracy (correct paragraph) | **77/77 (100%)** |
+| Test set size | 150 questions |
+| Accuracy (correct paragraph) | **150/150 (100%)** |
 | Response time | < 50 ms |
 | Knowledge base size | 40 paragraphs |
 | Sentence index size | 465 sentences |
@@ -106,6 +114,10 @@ Instead of generating answers from memory (risking hallucinations), the system f
 
 ```
 Mini-GPT/
+├── .github/workflows/          ← CI/CD Autotests (GitHub Actions)
+├── Dockerfile                  ← Container builder (Python + Gunicorn)
+├── pyproject.toml              ← Linter config (Ruff PEP8)
+├── preview.png                 ← Documentation GUI Image
 ├── shared/                     ← shared modules (v1 & v2)
 │   ├── transformer.py          # GPT architecture (from scratch)
 │   └── tokenizer.py            # character tokenizer
@@ -115,28 +127,33 @@ Mini-GPT/
 │   └── dane.json               # training data
 │
 └── v2/                         ← regulatory assistant
-├── main.py                 # entry point: training + CLI loop
-├── app.py                  # Flask server (GUI)
-├── parser.py               # PDFs in data/ → JSON knowledge files
-├── asystent.py             # standalone CLI interface
-├── requirements.txt        # Python dependencies
-│
-├── core/                   ← search & formatting logic
-│   ├── wyszukiwarka.py     # BM25 + Levenshtein + cosine
-│   ├── formatowanie.py     # response formatting
-│   └── bd.py               # SQLite: stats, feedback
-│
-├── data/
-│   ├── *.pdf               # source documents
-│   ├── *.json              # parsed knowledge files (one per document)
-│   └── *_cache.pkl         # BM25 / sentence index caches
-│
-├── tests/
-│   └── test.py             # automated tests (regression set, 50+ questions)
-│
-└── templates/
-    ├── index.html          # web interface
-    └── admin.html          # stats dashboard (Chart.js)
+    ├── main.py                 # entry point: training + CLI loop
+    ├── app.py                  # Flask server (GUI)
+    ├── parser.py               # PDFs in data/ → JSON knowledge files
+    ├── asystent.py             # standalone CLI interface
+    ├── requirements.txt        # Python dependencies
+    │
+    ├── core/                   ← search & formatting logic
+    │   ├── wyszukiwarka.py     # BM25 + Levenshtein + cosine
+    │   ├── formatowanie.py     # response formatting
+    │   ├── settings.py         # Config environments (.env load)
+    │   └── bd.py               # SQLite: stats, feedback
+    │
+    ├── data/
+    │   ├── *.pdf               # source documents
+    │   ├── *.json              # parsed knowledge files (one per document)
+    │   └── *_cache.pkl         # BM25 / sentence index caches
+    │
+    ├── tests/
+    │   └── test.py             # automated regression tests (150+ questions set)
+    │
+    ├── static/                 ← Frontend Assets
+    │   ├── css/style.css       # Clean styling matrix
+    │   └── js/main.js          # Independent GUI Logic
+    │
+    └── templates/
+        ├── index.html          # Web interface
+        └── admin.html          # Stats dashboard (Chart.js)
 ```
 
 ---
@@ -155,7 +172,23 @@ Mini-GPT/
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # other libraries
-pip install numpy tqdm pdfplumber flask
+pip install numpy tqdm pdfplumber flask python-dotenv gunicorn ruff
+```
+
+### Environment Setup (`.env`)
+To run the server securely with dashboard access, create a `.env` file in the main directory:
+```env
+ADMIN_TOKEN=your_secure_password_here
+# Optional variables:
+# DATABASE_URL=path/to/backup.db
+```
+
+### Docker Execution (Cloud Ready & Render-Safe)
+The project is containerized for seamless cross-platform deployment. Use Docker to build an isolated environment (automatically scales the `$PORT` binding for Native Cloud hostings like Render!).
+
+```bash
+docker build -t pwr-assistant -f Dockerfile .
+docker run -p 5000:5000 pwr-assistant
 ```
 
 ---
@@ -210,8 +243,9 @@ python tests/debug_parser.py
 
 - `FileNotFoundError` for missing knowledge files
   - Run `python parser.py` in `v2` to parse PDFs from `v2/data/` into JSON files.
-- Red underline on `from core...` in IDE
-  - In JetBrains: mark `v2` as **Sources Root** and use the same interpreter as runtime.
+- Red underline on `from core...` in IDE / Pylance Warnings
+  - In JetBrains: mark `v2` as **Sources Root**. 
+  - In VSCode: Create a `.env` file in the main folder and add `PYTHONPATH=v2` to fix Pylance path unresolved issues.
 - Relative import error (`attempted relative import with no known parent package`)
   - Do not run package modules by file path; use project entry points (`python app.py`, `python asystent.py`, `python tests/test.py`).
 - Missing logs in root `logs/`
@@ -275,6 +309,14 @@ python tests/debug_parser.py
 Projekt akademicki zbudowany od zera — bez gotowych bibliotek NLP (bez sklearn, bez Hugging Face, bez zewnętrznych API).
 
 ---
+
+Wszystkie algorytmy napisane **od zera w czystym Pythonie**.
+
+---
+
+<p align="center">
+  <img src="preview.png" alt="Interfejs Asystenta GUI" width="800">
+</p>
 
 ## Jak to działa
 
@@ -348,7 +390,7 @@ Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem gene
 - **Baza SQLite** dla statystyk i feedbacku (`v2/data/asystent.db`)
 - Logi tekstowe do `v2/logs/log.txt` (zdarzenia uruchomieniowe GUI/CLI)
 - Przyciski feedbacku 👍/👎 w GUI — zapisywane do bazy; słabe odpowiedzi trafiają do `v2/logs/do_poprawy.txt`
-- Testy automatyczne (`tests/test.py`) — zestaw regresyjny 77 pytań, **trafność 77/77**
+- Testy automatyczne (`tests/test.py`) — zestaw regresyjny ze skalowania 150 pytań, **trafność 150/150!**
 - Endpoint `/historia` — ostatnie 10 pytań z SQLite
 - Dashboard `/admin` (Chart.js) zabezpieczony tokenem `ADMIN_TOKEN`
 
@@ -356,6 +398,10 @@ Zamiast halucynować, model najpierw wyszukuje właściwy paragraf, a potem gene
 
 ```
 Mini-GPT/
+├── .github/workflows/          ← Ciągła integracja z Git (Autotesty)
+├── Dockerfile                  ← Architektura mikrokontenerów (Python + Gunicorn)
+├── pyproject.toml              ← Skrypt Lintera Ruff
+├── preview.png                 ← Makieta Dokumentacji GUI
 ├── shared/                     ← wspólne moduły (v1 i v2)
 │   ├── transformer.py          # architektura GPT (od zera)
 │   └── tokenizer.py            # tokenizer znakowy
@@ -374,6 +420,7 @@ Mini-GPT/
     ├── core/                   ← logika wyszukiwania i formatowania
     │   ├── wyszukiwarka.py     # BM25 + Levenshtein + cosinus
     │   ├── formatowanie.py     # formatowanie odpowiedzi
+    │   ├── settings.py         # Ostrzykiwania środowiskowe (.env)
     │   └── bd.py               # SQLite: statystyki, feedback
     │
     ├── data/
@@ -382,7 +429,11 @@ Mini-GPT/
     │   └── *_cache.pkl         # cache indeksów BM25 i zdań
     │
     ├── tests/
-    │   └── test.py             # testy automatyczne (zestaw regresyjny, 50+ pytań)
+    │   └── test.py             # testy automatyczne (regresyjne walidatory obrotowe)
+    │
+    ├── static/                 ← Wydzielona powłoka Frontend 
+    │   ├── css/style.css       # Izolowany plik stylów CSS 
+    │   └── js/main.js          # Obiektowa logika zdarzeń z GUI
     │
     └── templates/
         ├── index.html          # interfejs webowy
@@ -394,8 +445,8 @@ Mini-GPT/
 
 | Metryka | Wartość |
 |---|---|
-| Rozmiar zestawu testowego | 77 pytań |
-| Trafność (właściwy paragraf) | **77/77 (100%)** |
+| Rozmiar zestawu testowego | 150 pytań |
+| Trafność (właściwy paragraf) | **150/150 (100%)** |
 | Czas odpowiedzi | < 50 ms |
 | Rozmiar bazy | 40 paragrafów |
 | Rozmiar indeksu zdań | 465 zdań |
@@ -419,7 +470,22 @@ Mini-GPT/
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # pozostałe biblioteki
-pip install numpy tqdm pdfplumber flask
+pip install numpy tqdm pdfplumber flask python-dotenv gunicorn ruff
+```
+
+### Konfiguracja środowiska (`.env`)
+Bezpieczeństwo sesji administracyjnych we Flasku opiera się na kluczach. Utwórz plik `.env` i dodaj:
+```env
+ADMIN_TOKEN=twoje_bezpieczne_haslo
+# Opcjonalnie:
+# DATABASE_URL=sciezka_do_zrzutu.db
+```
+
+### Automatyzacja Systemowa (Docker)
+Koniec z "u mnie działa". Zbuduj izolowaną maszynę korzystając ze zintegrowanego obrazu. Kontener obsługuje elastyczne wymogi środowiska na potokach Webowych pod darmowe hostingi wymuszające własne gniazda.
+```bash
+docker build -t asystent-pwr -f Dockerfile .
+docker run -p 5000:5000 asystent-pwr
 ```
 
 ---
@@ -475,8 +541,9 @@ python tests/debug_parser.py
 
 - `FileNotFoundError` dla plików wiedzy
   - Uruchom `python parser.py` w katalogu `v2`, aby sparsować PDF-y z `v2/data/` do JSON.
-- Czerwone podkreślenie `from core...` w IDE
-  - W JetBrains oznacz `v2` jako **Sources Root** i użyj tego samego interpretera co przy uruchomieniu.
+- Czerwone podkreślenie `from core...` w IDE (oraz żółte w Pylance/VSCode)
+  - W JetBrains oznacz `v2` jako **Sources Root**.
+  - W VSCode stwórz u siebie plik `.env` przed korzeniem i dopisz `PYTHONPATH=v2` by ominąć niewidome lintery podglądu ścieżkowego.
 - Błąd importu względnego (`attempted relative import with no known parent package`)
   - Nie uruchamiaj modułów pakietu po ścieżce pliku; używaj punktów wejścia projektu (`python app.py`, `python asystent.py`, `python tests/test.py`).
 - Brak logów w `logs/` w katalogu głównym repo
